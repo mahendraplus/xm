@@ -10,9 +10,10 @@ import { Link } from 'react-router-dom'
 
 const ForgotPasswordPage = () => {
     const [email, setEmail] = useState('')
+    const [note, setNote] = useState('')
     const [loading, setLoading] = useState(false)
     const [msg, setMsg] = useState('')
-    const [status, setStatus] = useState<'idle' | 'submitted' | 'checking'>('idle')
+    const [status, setStatus] = useState<'idle' | 'submitted'>('idle')
     const [resetStatus, setResetStatus] = useState('')
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -20,7 +21,8 @@ const ForgotPasswordPage = () => {
         setLoading(true)
         setMsg('')
         try {
-            const res = await apiClient.post('/api/auth/forgot-password', { email })
+            // Correct API path is /api/auth/forgot-password/request
+            const res = await apiClient.post('/api/auth/forgot-password/request', { email, note })
             setMsg(res.data.msg || 'Request sent to admin. Please wait for approval.')
             setStatus('submitted')
         } catch (err: any) {
@@ -34,7 +36,7 @@ const ForgotPasswordPage = () => {
         setLoading(true)
         try {
             const res = await apiClient.get(`/api/auth/forgot-password/status?email=${encodeURIComponent(email)}`)
-            setResetStatus(res.data.msg || 'Pending admin approval...')
+            setResetStatus(res.data.msg || 'Pending admin review...')
         } catch (err: any) {
             setResetStatus(err.response?.data?.detail || 'Could not fetch status.')
         } finally {
@@ -57,7 +59,7 @@ const ForgotPasswordPage = () => {
                         <KeyRound className="w-10 h-10 mx-auto text-primary mb-2" />
                         <CardTitle className="text-2xl">Forgot Password</CardTitle>
                         <CardDescription>
-                            Submit a request and an admin will reset your password.
+                            Submit a request and an admin will set a temporary password for you.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -70,15 +72,25 @@ const ForgotPasswordPage = () => {
                                     onChange={e => setEmail(e.target.value)}
                                     required
                                 />
+                                <Input
+                                    type="text"
+                                    placeholder="Note for admin (e.g. Lost my phone)"
+                                    value={note}
+                                    onChange={e => setNote(e.target.value)}
+                                />
                                 <Button type="submit" className="w-full" disabled={loading}>
                                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     Submit Request
                                 </Button>
+                                {msg && <p className="text-center text-red-400 text-sm">{msg}</p>}
                             </form>
                         ) : (
                             <div className="space-y-4 text-center">
                                 <CheckCircle className="w-12 h-12 mx-auto text-green-500" />
                                 <p className="text-green-400">{msg}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Admin will set a temporary password and send it to you via WhatsApp/Email manually.
+                                </p>
                                 <Button variant="secondary" onClick={checkStatus} disabled={loading} className="w-full">
                                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     Check Status
@@ -87,10 +99,6 @@ const ForgotPasswordPage = () => {
                                     <p className="text-sm text-muted-foreground bg-white/5 p-3 rounded">{resetStatus}</p>
                                 )}
                             </div>
-                        )}
-
-                        {msg && status === 'idle' && (
-                            <p className="text-center text-red-400 text-sm">{msg}</p>
                         )}
 
                         <div className="text-center pt-2">

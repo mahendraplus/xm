@@ -9,6 +9,8 @@ export interface User {
     searches: number
     api_key: string | null
     created_at: string
+    account_status?: string
+    total_spent?: number
 }
 
 interface AuthState {

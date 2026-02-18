@@ -24,15 +24,24 @@ const AuthPage = () => {
     const navigate = useNavigate()
     const { setToken, setUser } = useAuthStore()
 
+    const [successMsg, setSuccessMsg] = useState('')
+
     const { register, handleSubmit, formState: { errors } } = useForm()
 
     const onSubmit = async (data: any) => {
         setLoading(true)
         setError('')
+        setSuccessMsg('')
         try {
-            const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login'
-            const res = await apiClient.post(endpoint, data)
+            if (isRegister) {
+                // Registration — account starts as PENDING
+                const res = await apiClient.post('/api/auth/register', data)
+                const status = res.data.account_status || 'PENDING'
+                setSuccessMsg(`✓ Registration successful! Your account is ${status}. An admin must activate it before you can login. Contact support to speed up activation.`)
+                return
+            }
 
+            const res = await apiClient.post('/api/auth/login', data)
             const { token } = res.data
             setToken(token)
 
@@ -43,7 +52,12 @@ const AuthPage = () => {
             navigate('/dashboard')
         } catch (err: any) {
             console.error(err)
-            setError(err.response?.data?.detail || 'Authentication failed. Please check your credentials.')
+            const detail = err.response?.data?.detail
+            if (typeof detail === 'string') {
+                setError(detail)
+            } else {
+                setError('Authentication failed. Please check your credentials.')
+            }
         } finally {
             setLoading(false)
         }
@@ -102,6 +116,12 @@ const AuthPage = () => {
                             {error && (
                                 <div className="p-3 rounded-md bg-destructive/20 border border-destructive/50 text-destructive text-sm text-center">
                                     {error}
+                                </div>
+                            )}
+
+                            {successMsg && (
+                                <div className="p-3 rounded-md bg-green-500/20 border border-green-500/50 text-green-300 text-sm text-center">
+                                    {successMsg}
                                 </div>
                             )}
 
