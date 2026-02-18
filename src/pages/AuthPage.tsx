@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useAuthStore } from '@/store/authStore'
 import apiClient from '@/api/client'
 import { Helmet } from 'react-helmet-async'
-import { Loader2, Cog } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 // Note: I need to install @radix-ui/react-dialog for Dialog, or build my own.
 // I will build a simple custom Dialog/Modal to avoid more dependencies for now, 
@@ -61,6 +61,18 @@ const AuthPage = () => {
         window.location.reload() // Reload to apply new client config if needed (or just re-render)
     }
 
+    // Secret Trigger State
+    const [clickCount, setClickCount] = useState(0)
+
+    const handleSecretTrigger = () => {
+        const newCount = clickCount + 1
+        setClickCount(newCount)
+        if (newCount >= 5) {
+            setShowSettings(true)
+            setClickCount(0)
+        }
+    }
+
     return (
         <div className="flex items-center justify-center min-h-[80vh]">
             <Helmet>
@@ -73,13 +85,6 @@ const AuthPage = () => {
                 className="w-full max-w-md p-4"
             >
                 <Card className="border-white/10 bg-black/40 backdrop-blur-xl relative overflow-hidden">
-                    {/* Settings Button */}
-                    <div className="absolute top-4 right-4 z-10">
-                        <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)}>
-                            <Cog className="w-5 h-5 text-muted-foreground hover:text-white" />
-                        </Button>
-                    </div>
-
                     {showSettings ? (
                         // Settings View
                         <div className="p-6 space-y-4">
@@ -120,7 +125,11 @@ const AuthPage = () => {
                         // Auth Form View
                         <>
                             <CardHeader>
-                                <CardTitle className="text-2xl text-center">
+                                {/* Secret Trigger: Click Title 5 times to open settings */}
+                                <CardTitle
+                                    className="text-2xl text-center cursor-default select-none active:scale-95 transition-transform"
+                                    onClick={handleSecretTrigger}
+                                >
                                     {isRegister ? 'Create Account' : 'Welcome Back'}
                                 </CardTitle>
                                 <CardDescription className="text-center">
