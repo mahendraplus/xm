@@ -26,9 +26,6 @@ jobs:
 
       - name: Build
         run: npm run build
-        env:
-          VITE_API_URL: ${{ secrets.API_BASE_URL }}
-          VITE_SPACES_JWT: ${{ secrets.SPACES_JWT }}
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
