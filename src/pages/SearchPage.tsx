@@ -31,7 +31,7 @@ const SearchPage = () => {
         try {
             const res = await apiClient.post('/api/user/search', {
                 mobile: data.mobile,
-                type: 'mobile_to_name'
+                type: data.type || 'name'
             })
 
             setResults(res.data.results)
@@ -78,8 +78,8 @@ const SearchPage = () => {
 
             <Card className="border-white/10 bg-black/40 backdrop-blur-xl">
                 <CardContent className="pt-6">
-                    <form onSubmit={handleSubmit(onSearch)} className="flex flex-col md:flex-row gap-4">
-                        <div className="flex-1">
+                    <form onSubmit={handleSubmit(onSearch)} className="flex flex-col md:flex-row gap-4 items-start">
+                        <div className="flex-1 w-full space-y-2">
                             <Input
                                 placeholder="Enter 10-digit mobile number"
                                 {...register('mobile', {
@@ -88,8 +88,26 @@ const SearchPage = () => {
                                 })}
                                 className="h-12 text-lg"
                             />
-                            {errors.mobile && <span className="text-red-400 text-sm mt-1">Please enter a valid 10-digit number</span>}
+                            {errors.mobile && <span className="text-red-400 text-sm">Please enter a valid 10-digit number</span>}
                         </div>
+
+                        <div className="w-full md:w-48">
+                            <select
+                                {...register('type')}
+                                className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                defaultValue="name"
+                            >
+                                <option value="name">Basic Info (Name)</option>
+                                <option value="">Full Profile</option>
+                                <option value="father">Father Name</option>
+                                <option value="address">Address</option>
+                                <option value="email">Email</option>
+                                <option value="alt">Alt Mobile</option>
+                                <option value="circle">Circle/State</option>
+                                <option value="id">ID/Photo</option>
+                            </select>
+                        </div>
+
                         <Button size="lg" className="h-12" type="submit" disabled={loading}>
                             {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Search className="w-5 h-5 mr-2" />}
                             Search
