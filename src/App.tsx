@@ -6,6 +6,7 @@ import Dashboard from '@/pages/Dashboard'
 import AuthPage from '@/pages/AuthPage'
 import SearchPage from '@/pages/SearchPage'
 import HistoryPage from '@/pages/HistoryPage'
+import AdminPage from '@/pages/AdminPage'
 // import { Toaster } from '@/components/ui/toaster' // Will create this later or use library
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/history" element={<HistoryPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Route>
         </Routes>
       </Router>

@@ -164,6 +164,7 @@ const SearchPage = () => {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="grid gap-4 md:grid-cols-2">
+                                    {/* Name & Mobile always shown */}
                                     <div className="flex items-center space-x-4 p-4 rounded-lg bg-black/20">
                                         <div className="bg-primary/20 p-3 rounded-full">
                                             <User className="w-6 h-6 text-primary" />
@@ -184,13 +185,53 @@ const SearchPage = () => {
                                         </div>
                                     </div>
 
-                                    {/* Fallback for other fields */}
-                                    {Object.entries(result).filter(([k]) => k !== 'name' && k !== 'mobile').map(([key, value]) => (
-                                        <div key={key} className="p-4 rounded-lg bg-black/20">
-                                            <p className="text-sm text-muted-foreground capitalize">{key.replace('_', ' ')}</p>
-                                            <p className="text-md font-medium">{String(value)}</p>
+                                    {/* Extended Fields for Full Profile */}
+                                    {result.fname && (
+                                        <div className="p-4 rounded-lg bg-black/20">
+                                            <p className="text-sm text-muted-foreground">Father Name</p>
+                                            <p className="text-md font-medium">{result.fname}</p>
                                         </div>
-                                    ))}
+                                    )}
+                                    {result.address && (
+                                        <div className="p-4 rounded-lg bg-black/20 md:col-span-2">
+                                            <p className="text-sm text-muted-foreground">Address</p>
+                                            <p className="text-md font-medium break-words">{result.address}</p>
+                                        </div>
+                                    )}
+                                    {result.email && (
+                                        <div className="p-4 rounded-lg bg-black/20">
+                                            <p className="text-sm text-muted-foreground">Email</p>
+                                            <p className="text-md font-medium">{result.email}</p>
+                                        </div>
+                                    )}
+                                    {result.alt && (
+                                        <div className="p-4 rounded-lg bg-black/20">
+                                            <p className="text-sm text-muted-foreground">Alt Mobile</p>
+                                            <p className="text-md font-medium">{result.alt}</p>
+                                        </div>
+                                    )}
+                                    {result.circle && (
+                                        <div className="p-4 rounded-lg bg-black/20">
+                                            <p className="text-sm text-muted-foreground">Circle</p>
+                                            <p className="text-md font-medium">{result.circle}</p>
+                                        </div>
+                                    )}
+                                    {result.id && (
+                                        <div className="p-4 rounded-lg bg-black/20">
+                                            <p className="text-sm text-muted-foreground">ID</p>
+                                            <p className="text-md font-medium">{result.id}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Fallback for any other unexpected fields */}
+                                    {Object.entries(result)
+                                        .filter(([k]) => !['name', 'mobile', 'fname', 'address', 'email', 'alt', 'circle', 'id', 'msg'].includes(k))
+                                        .map(([key, value]) => (
+                                            <div key={key} className="p-4 rounded-lg bg-black/20">
+                                                <p className="text-sm text-muted-foreground capitalize">{key.replace('_', ' ')}</p>
+                                                <p className="text-md font-medium">{String(value)}</p>
+                                            </div>
+                                        ))}
                                 </CardContent>
                             </Card>
                         </motion.div>

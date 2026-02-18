@@ -20,6 +20,7 @@ apiClient.interceptors.request.use(
         }
 
         // 1. Always send custom header if we have the Spaces JWT (Manual override)
+        // Kept for backward compatibility if user has cookies, but effectively unused if public.
         if (spacesJwt) {
             config.headers['X-Space-Token'] = spacesJwt
         }
@@ -28,10 +29,6 @@ apiClient.interceptors.request.use(
         if (authToken) {
             // User is logged in to the App
             config.headers['Authorization'] = `Bearer ${authToken}`
-        } else if (spacesJwt) {
-            // Not logged in, but we need to pass the Gatekeeper
-            // Some Spaces accept the Gatekeeper token as Bearer
-            config.headers['Authorization'] = `Bearer ${spacesJwt}`
         }
 
         return config
