@@ -110,10 +110,15 @@ const AuthPage = () => {
                             </Button>
                         </form>
                     </CardContent>
-                    <CardFooter className="flex justify-center">
+                    <CardFooter className="flex flex-col items-center gap-2">
                         <Button variant="link" onClick={() => setIsRegister(!isRegister)} className="text-muted-foreground hover:text-white">
                             {isRegister ? 'Already have an account? Login' : "Don't have an account? Sign Up"}
                         </Button>
+                        {!isRegister && (
+                            <a href="#/forgot-password" className="text-xs text-muted-foreground hover:text-white underline">
+                                Forgot Password?
+                            </a>
+                        )}
                     </CardFooter>
                 </Card>
             </motion.div>

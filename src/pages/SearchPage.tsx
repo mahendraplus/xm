@@ -95,10 +95,10 @@ const SearchPage = () => {
                             <select
                                 {...register('type')}
                                 className="flex h-12 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                defaultValue="name"
+                                defaultValue="full"
                             >
                                 <option value="name">Basic Info (Name)</option>
-                                <option value="">Full Profile</option>
+                                <option value="full">Full Profile (Recommended)</option>
                                 <option value="father">Father Name</option>
                                 <option value="address">Address</option>
                                 <option value="email">Email</option>

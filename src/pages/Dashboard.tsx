@@ -4,31 +4,47 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Copy, RefreshCw, CreditCard, Activity, Key } from 'lucide-react'
+import { Copy, RefreshCw, CreditCard, Activity, Key, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import apiClient from '@/api/client'
 import { Helmet } from 'react-helmet-async'
-// import { toast } from 'sonner' // I need to install sonner or use a simple alert.
-// I'll use window.alert or custom toast for now since I haven't installed sonner. 
-// Actually I will install sonner, it's great. 
-// Wait, I already added <Toaster /> in App.tsx but didn't implement it. 
-// I will just use a simple state for "Key Generated" or use browser alert for copy.
+
+interface PaymentRequest {
+    amount: number
+    utr: string
+    status: string
+    created_at: string
+}
 
 const Dashboard = () => {
     const { user, setUser, token } = useAuthStore()
     const navigate = useNavigate()
     const [loading, setLoading] = useState(false)
     const [apiKey, setApiKey] = useState(user?.api_key || '')
+    const [payments, setPayments] = useState<PaymentRequest[]>([])
+    const [payLoading, setPayLoading] = useState(false)
 
     useEffect(() => {
         if (!token) navigate('/auth')
+        else fetchPayments()
     }, [token, navigate])
+
+    const fetchPayments = async () => {
+        setPayLoading(true)
+        try {
+            const res = await apiClient.get('/api/user/payment-requests')
+            setPayments(res.data.requests || [])
+        } catch (e) {
+            console.error(e)
+        } finally {
+            setPayLoading(false)
+        }
+    }
 
     const generateKey = async () => {
         setLoading(true)
         try {
             const res = await apiClient.post('/api/user/generate-key')
             setApiKey(res.data.api_key)
-            // Update user in store
             if (user) {
                 setUser({ ...user, api_key: res.data.api_key })
             }
@@ -69,7 +85,7 @@ const Dashboard = () => {
                         <CreditCard className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">₹{user.credits.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">₹{user.credits?.toFixed(2) ?? '0.00'}</div>
                         <p className="text-xs text-muted-foreground">Available balance</p>
                     </CardContent>
                 </Card>
@@ -79,7 +95,7 @@ const Dashboard = () => {
                         <Activity className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{user.searches}</div>
+                        <div className="text-2xl font-bold">{user.searches ?? 0}</div>
                         <p className="text-xs text-muted-foreground">Lifetime requests</p>
                     </CardContent>
                 </Card>
@@ -117,9 +133,50 @@ const Dashboard = () => {
                         </Button>
                     </CardFooter>
                 </Card>
+
+                {/* Payment History */}
+                <Card className="col-span-2 md:col-span-1">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Clock className="w-5 h-5" /> Payment History
+                        </CardTitle>
+                        <CardDescription>Your recent credit top-up requests.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {payLoading ? (
+                            <div className="flex justify-center py-4">
+                                <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : payments.length === 0 ? (
+                            <p className="text-muted-foreground text-sm text-center py-4">No payment requests yet.</p>
+                        ) : (
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {payments.map((p, i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 rounded bg-white/5 text-sm">
+                                        <div>
+                                            <p className="font-medium">₹{p.amount}</p>
+                                            <p className="text-xs text-muted-foreground">{p.utr}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            {p.status === 'approved' ? (
+                                                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                            ) : p.status === 'rejected' ? (
+                                                <XCircle className="w-4 h-4 text-red-500" />
+                                            ) : (
+                                                <Clock className="w-4 h-4 text-yellow-500" />
+                                            )}
+                                            <span className="capitalize text-xs">{p.status}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </div>
     )
 }
 
 export default Dashboard
+
