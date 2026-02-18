@@ -6,12 +6,12 @@ const apiClient = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true // Critical: Allows sending cookies (spaces-jwt) with cross-origin requests
 })
 
 // Request Interceptor
 apiClient.interceptors.request.use(
     (config) => {
-        // For this task, I will set it as a config header, hoping the server might check it, 
         const { spacesJwt, apiUrl, token: authToken } = useAuthStore.getState()
 
         // Runtime API URL Override
@@ -19,22 +19,19 @@ apiClient.interceptors.request.use(
             config.baseURL = apiUrl
         }
 
-        // Handle Authorization
-        // 1. If we have a user token, that takes precedence for user-specific endpoints
-        // Handle Authorization
-        // 1. If we have a user token, that takes precedence for user-specific endpoints
-        if (authToken) {
-            config.headers['Authorization'] = `Bearer ${authToken}`
-        }
-        // 2. If no user token but we have spacesJwt, send that to access the Space
-        else if (spacesJwt) {
-            config.headers['Authorization'] = `Bearer ${spacesJwt}`
-        }
-
-        // 3. For some HF Spaces, they might expect the cookie value in a custom header
-        // if Authorization is reserved. We'll add a custom header just in case.
+        // 1. Always send custom header if we have the Spaces JWT (Manual override)
         if (spacesJwt) {
             config.headers['X-Space-Token'] = spacesJwt
+        }
+
+        // 2. Handle standard Authorization
+        if (authToken) {
+            // User is logged in to the App
+            config.headers['Authorization'] = `Bearer ${authToken}`
+        } else if (spacesJwt) {
+            // Not logged in, but we need to pass the Gatekeeper
+            // Some Spaces accept the Gatekeeper token as Bearer
+            config.headers['Authorization'] = `Bearer ${spacesJwt}`
         }
 
         return config
