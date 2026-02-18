@@ -64,6 +64,11 @@ const Dashboard = () => {
 
     const handleDeposit = async (e: React.FormEvent) => {
         e.preventDefault()
+        const parsedAmount = parseFloat(depositAmount)
+        if (!parsedAmount || parsedAmount <= 0) {
+            setDepositMsg('Amount must be greater than 0.')
+            return
+        }
         setDepositLoading(true)
         setDepositMsg('')
         try {
@@ -155,6 +160,8 @@ const Dashboard = () => {
                             <Input
                                 placeholder="Amount (e.g. 5000)"
                                 type="number"
+                                min="0.01"
+                                step="0.01"
                                 value={depositAmount}
                                 onChange={e => setDepositAmount(e.target.value)}
                                 required

@@ -335,7 +335,7 @@ const AdminPage = () => {
                             <CardContent>
                                 <form onSubmit={handleAddCredits} className="space-y-4">
                                     <Input placeholder="User Email" value={creditEmail} onChange={e => setCreditEmail(e.target.value)} required />
-                                    <Input placeholder="Amount (e.g. 5000)" type="number" value={creditAmount} onChange={e => setCreditAmount(e.target.value)} required />
+                                    <Input placeholder="Amount (e.g. 5000)" type="number" min="0.01" step="0.01" value={creditAmount} onChange={e => setCreditAmount(e.target.value)} required />
                                     <Input placeholder="Reason (e.g. UPI payment SBI123 verified)" value={creditReason} onChange={e => setCreditReason(e.target.value)} />
                                     <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
                                         {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Add Credits
