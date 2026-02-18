@@ -1,6 +1,7 @@
 {
   "name": "app",
   "private": true,
+  "homepage": "https://mahendraplus.github.io/xm/",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -11,7 +12,6 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
-    "@tailwindcss/postcss": "^4.2.0",
     "axios": "^1.13.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
