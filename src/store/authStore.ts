@@ -26,8 +26,8 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
     persist(
         (set) => ({
-            spacesJwt: null,
-            apiUrl: null,
+            spacesJwt: import.meta.env.VITE_SPACES_JWT || null,
+            apiUrl: import.meta.env.VITE_API_URL || null,
             token: null,
             user: null,
             setSpacesJwt: (jwt) => set({ spacesJwt: jwt }),

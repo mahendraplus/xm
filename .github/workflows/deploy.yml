@@ -27,8 +27,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Optional: You can set a default API URL at build time using GitHub Secrets
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL: ${{ secrets.API_BASE_URL }}
+          VITE_SPACES_JWT: ${{ secrets.SPACES_JWT }}
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
