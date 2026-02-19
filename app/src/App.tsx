@@ -58,7 +58,7 @@ function App() {
         {renderPage()}
       </RootLayout>
       <Toaster
-        position="top-right"
+        position="bottom-center"
         richColors
         closeButton
         toastOptions={{
