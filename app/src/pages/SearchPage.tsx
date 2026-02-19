@@ -336,7 +336,12 @@ const SearchPage = () => {
                         </div>
                     </motion.div>
                 )}
+                )}
             </AnimatePresence>
+
+            <div className="text-center text-[10px] text-muted-foreground/30 mt-8">
+                Search Module v2.2 • API Connected
+            </div>
         </div>
     )
 }
