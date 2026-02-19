@@ -1,9 +1,9 @@
 import { useAuthStore } from '@/store/authStore'
-import { useAppStore } from '@/store/appStore'
-import type { Theme } from '@/store/appStore'
+import { useAppStore, ACCENT_COLORS } from '@/store/appStore'
+import type { Theme, AccentColor } from '@/store/appStore'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Rocket, LogOut, Sun, Moon, Monitor, BookOpen, MessageCircle } from 'lucide-react'
+import { Menu, X, Rocket, LogOut, Sun, Moon, Monitor, BookOpen, MessageCircle, Palette } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -16,10 +16,11 @@ const ThemeIcon = ({ theme }: { theme: Theme }) => {
 
 const Navbar = () => {
     const { user, logout } = useAuthStore()
-    const { currentPage, navigate, theme, setTheme } = useAppStore()
+    const { currentPage, navigate, theme, setTheme, accentColor, setAccentColor } = useAppStore()
     const [isOpen, setIsOpen] = useState(false)
     const [scrolled, setScrolled] = useState(false)
     const [showThemeMenu, setShowThemeMenu] = useState(false)
+    const [showColorMenu, setShowColorMenu] = useState(false)
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -36,6 +37,7 @@ const Navbar = () => {
     }
 
     const themes: Theme[] = ['dark', 'light', 'system']
+    const accentColors: AccentColor[] = ['blue', 'purple', 'green', 'orange', 'rose', 'cyan']
 
     const navTo = (page: any) => { navigate(page); setIsOpen(false) }
 
@@ -57,16 +59,61 @@ const Navbar = () => {
                     </button>
 
                     {/* Desktop Nav */}
-                    <div className="hidden md:flex items-center space-x-2">
-                        {/* API Docs - always visible */}
-                        <Button variant="ghost" size="sm" onClick={() => navTo('api-docs')}>
-                            <BookOpen className="w-4 h-4 mr-1" /> API Docs
-                        </Button>
+                    <div className="hidden md:flex items-center space-x-1">
+                        {/* Accent Color Picker */}
+                        <div className="relative">
+                            <button
+                                onClick={() => { setShowColorMenu(v => !v); setShowThemeMenu(false) }}
+                                className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                                title="Accent color"
+                            >
+                                <Palette className="w-4 h-4" />
+                            </button>
+                            <AnimatePresence>
+                                {showColorMenu && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                                        className="absolute right-0 mt-2 w-44 glass rounded-lg shadow-lg p-2 z-50 border border-border/50"
+                                    >
+                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 px-1">Accent Color</p>
+                                        <div className="grid grid-cols-3 gap-1.5">
+                                            {accentColors.map(c => {
+                                                const { hue, sat, light } = ACCENT_COLORS[c]
+                                                return (
+                                                    <button
+                                                        key={c}
+                                                        onClick={() => { setAccentColor(c); setShowColorMenu(false); toast(`Accent: ${c}`) }}
+                                                        className={cn(
+                                                            "flex flex-col items-center gap-1 p-2 rounded-lg text-[10px] capitalize transition-all",
+                                                            accentColor === c ? "bg-primary/15 ring-1 ring-primary/50" : "hover:bg-muted"
+                                                        )}
+                                                    >
+                                                        <div
+                                                            className={cn(
+                                                                "w-5 h-5 rounded-full transition-transform hover:scale-110",
+                                                                accentColor === c && "ring-2 ring-offset-1 ring-offset-background"
+                                                            )}
+                                                            style={{
+                                                                background: `hsl(${hue}, ${sat}%, ${light}%)`,
+                                                                ...(accentColor === c ? { outlineColor: `hsl(${hue}, ${sat}%, ${light}%)` } : {}),
+                                                            }}
+                                                        />
+                                                        {c}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
 
                         {/* Theme Toggle */}
                         <div className="relative">
                             <button
-                                onClick={() => setShowThemeMenu(v => !v)}
+                                onClick={() => { setShowThemeMenu(v => !v); setShowColorMenu(false) }}
                                 className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                                 title="Toggle theme"
                             >
@@ -98,19 +145,24 @@ const Navbar = () => {
                         </div>
 
                         {user ? (
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-1">
                                 <Button variant="ghost" size="sm" onClick={() => navTo('dashboard')}>Dashboard</Button>
                                 <Button variant="ghost" size="sm" onClick={() => navTo('search')}>Search</Button>
                                 <Button variant="ghost" size="sm" onClick={() => navTo('history')}>History</Button>
                                 <Button variant="ghost" size="sm" onClick={() => navTo('chat')}>
                                     <MessageCircle className="w-4 h-4 mr-1" /> Chat
                                 </Button>
+                                {user.role === 'admin' && (
+                                    <Button variant="ghost" size="sm" onClick={() => navTo('api-docs')}>
+                                        <BookOpen className="w-4 h-4 mr-1" /> API Docs
+                                    </Button>
+                                )}
                                 <Button variant="destructive" size="sm" onClick={handleLogout}>
                                     <LogOut className="w-4 h-4 mr-1" /> Logout
                                 </Button>
                             </div>
                         ) : (
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center space-x-2">
                                 <Button variant="ghost" size="sm" onClick={() => navTo('auth')}>Log In</Button>
                                 <Button size="sm" className="glow-primary" onClick={() => navTo('auth')}>Get Started</Button>
                             </div>
@@ -118,12 +170,18 @@ const Navbar = () => {
                     </div>
 
                     {/* Mobile Menu Button */}
-                    <div className="md:hidden flex items-center gap-2">
+                    <div className="md:hidden flex items-center gap-1">
                         <button
                             onClick={() => { const t: Theme[] = ['dark', 'light', 'system']; const idx = t.indexOf(theme); setTheme(t[(idx + 1) % 3]) }}
                             className="p-2 rounded-md hover:bg-muted text-muted-foreground"
                         >
                             <ThemeIcon theme={theme} />
+                        </button>
+                        <button
+                            onClick={() => { const cols: AccentColor[] = ['blue', 'purple', 'green', 'orange', 'rose', 'cyan']; const idx = cols.indexOf(accentColor); setAccentColor(cols[(idx + 1) % cols.length]) }}
+                            className="p-2 rounded-md hover:bg-muted text-muted-foreground"
+                        >
+                            <Palette className="w-4 h-4" />
                         </button>
                         <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-md hover:bg-muted transition-colors text-foreground">
                             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -141,10 +199,7 @@ const Navbar = () => {
                         exit={{ opacity: 0, height: 0 }}
                         className="md:hidden border-t border-border/50 glass"
                     >
-                        <div className="px-4 py-6 space-y-3">
-                            <Button className="w-full" variant="secondary" onClick={() => navTo('api-docs')}>
-                                <BookOpen className="w-4 h-4 mr-2" /> API Docs
-                            </Button>
+                        <div className="px-4 py-6 space-y-2">
                             {user ? (
                                 <>
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('dashboard')}>Dashboard</Button>
@@ -153,6 +208,11 @@ const Navbar = () => {
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('chat')}>
                                         <MessageCircle className="w-4 h-4 mr-2" /> Chat
                                     </Button>
+                                    {user.role === 'admin' && (
+                                        <Button className="w-full" variant="secondary" onClick={() => navTo('api-docs')}>
+                                            <BookOpen className="w-4 h-4 mr-2" /> API Docs
+                                        </Button>
+                                    )}
                                     <Button className="w-full" variant="destructive" onClick={handleLogout}>
                                         <LogOut className="w-4 h-4 mr-2" /> Logout
                                     </Button>

@@ -71,7 +71,6 @@ const ChatPage = () => {
             await apiClient.post('/api/chat/send', { text: text.trim() })
             setText('')
             toast.success('Message sent!')
-            // Immediately refresh
             await fetchMessages(false)
         } catch (err: any) {
             toast.error(err.response?.data?.detail || 'Failed to send message')
@@ -82,12 +81,14 @@ const ChatPage = () => {
 
     if (!user) return null
 
+    const userName = user.name || user.email?.split('@')[0] || 'You'
+
     return (
         <div className="flex flex-col h-[calc(100vh-12rem)] max-w-3xl mx-auto">
             <Helmet><title>Help Desk | Go-Biz</title></Helmet>
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 animate-fade-in">
                 <div>
                     <h1 className="text-2xl font-bold gradient-text flex items-center gap-2">
                         <MessageCircle className="w-6 h-6" /> Help Desk
@@ -101,7 +102,7 @@ const ChatPage = () => {
 
             {/* Chat Messages Area */}
             <Card className="glass flex-1 overflow-hidden flex flex-col border-border/50">
-                <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
+                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
                     {loading ? (
                         <div className="flex items-center justify-center h-full">
                             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -116,38 +117,54 @@ const ChatPage = () => {
                         </div>
                     ) : (
                         <AnimatePresence>
-                            {messages.map((msg) => (
+                            {messages.map((msg, i) => (
                                 <motion.div
                                     key={msg.id}
-                                    initial={{ opacity: 0, y: 8 }}
-                                    animate={{ opacity: 1, y: 0 }}
+                                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    transition={{ delay: i * 0.03, duration: 0.2 }}
                                     className={cn(
-                                        "flex gap-2",
+                                        "flex gap-2.5",
                                         msg.sender === 'user' ? 'justify-end' : 'justify-start'
                                     )}
                                 >
                                     {msg.sender === 'admin' && (
-                                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-1">
                                             <Shield className="w-4 h-4 text-primary" />
                                         </div>
                                     )}
                                     <div className={cn(
-                                        "max-w-[75%] px-4 py-2.5 rounded-2xl text-sm",
-                                        msg.sender === 'user'
-                                            ? 'bg-primary text-primary-foreground rounded-br-md'
-                                            : 'bg-muted text-foreground rounded-bl-md'
+                                        "max-w-[75%] space-y-1",
+                                        msg.sender === 'user' ? 'items-end' : 'items-start'
                                     )}>
-                                        <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                                        {/* Sender Name */}
                                         <p className={cn(
-                                            "text-[10px] mt-1",
-                                            msg.sender === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground'
+                                            "text-[10px] font-semibold uppercase tracking-wider px-1",
+                                            msg.sender === 'user' ? 'text-right text-primary' : 'text-left text-muted-foreground'
+                                        )}>
+                                            {msg.sender === 'user' ? userName : 'Admin'}
+                                        </p>
+                                        {/* Bubble */}
+                                        <div className={cn(
+                                            "px-4 py-2.5 rounded-2xl text-sm shadow-sm",
+                                            msg.sender === 'user'
+                                                ? 'bg-primary text-primary-foreground rounded-br-md'
+                                                : 'bg-muted text-foreground rounded-bl-md'
+                                        )}>
+                                            <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                                        </div>
+                                        {/* Time */}
+                                        <p className={cn(
+                                            "text-[10px] px-1",
+                                            msg.sender === 'user' ? 'text-right text-muted-foreground' : 'text-left text-muted-foreground'
                                         )}>
                                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {msg.sender === 'user' && msg.read && ' · Read'}
                                         </p>
                                     </div>
                                     {msg.sender === 'user' && (
-                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                                            <User className="w-4 h-4 text-muted-foreground" />
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                                            <User className="w-4 h-4 text-primary" />
                                         </div>
                                     )}
                                 </motion.div>

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
     Loader2, ShieldCheck, CreditCard, Users, KeyRound, BarChart3,
     CheckCircle, XCircle, DollarSign, Copy, RefreshCw, Eye, EyeOff,
-    Lock, Settings, Bell, IndianRupee, UserCheck, Tag, Search, Wifi, Clock
+    Lock, Settings, Bell, IndianRupee, UserCheck, Tag, Search, Wifi, Clock,
+    MessageCircle, Send
 } from 'lucide-react'
 import apiClient from '@/api/client'
 import { Helmet } from 'react-helmet-async'
@@ -47,6 +48,8 @@ interface SystemSettings {
 }
 interface FieldPrices { base_search_fee: number; fields: Record<string, number> }
 interface Notification { id: string; msg: string; created_at: string; read: boolean }
+interface ChatThread { user_email: string; user_name: string; messages: ChatMsg[]; unread_count: number }
+interface ChatMsg { id: string; sender: 'user' | 'admin'; text: string; created_at: string; read: boolean }
 
 const AdminPage = () => {
     const [adminToken, setAdminToken] = useState(localStorage.getItem('admin_token') || '')
@@ -65,6 +68,10 @@ const AdminPage = () => {
     const [depositSummary, setDepositSummary] = useState<any>(null)
     const [resets, setResets] = useState<ResetReq[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
+    const [chatThreads, setChatThreads] = useState<ChatThread[]>([])
+    const [chatReplyText, setChatReplyText] = useState<Record<string, string>>({})
+    const [chatReplyLoading, setChatReplyLoading] = useState<Record<string, boolean>>({})
+    const [selectedChat, setSelectedChat] = useState<string | null>(null)
     const [prices, setPrices] = useState<FieldPrices | null>(null)
     const [settings, setSettings] = useState<SystemSettings | null>(null)
     const [settingsDraft, setSettingsDraft] = useState<Partial<SystemSettings>>({})
@@ -164,10 +171,53 @@ const AdminPage = () => {
         } catch { }
     }, [adminToken])
 
+    const fetchChatThreads = useCallback(async () => {
+        try {
+            const r = await apiClient.get('/api/admin/chat/threads', authHeader)
+            setChatThreads(r.data.threads || r.data || [])
+        } catch {
+            // fallback: try individual chat history
+            try {
+                const r = await apiClient.get('/api/admin/chat/all', authHeader)
+                const allMsgs = r.data.messages || r.data || []
+                // Group by user
+                const grouped: Record<string, ChatMsg[]> = {}
+                allMsgs.forEach((m: any) => {
+                    const key = m.user_email || m.user_id || 'unknown'
+                    if (!grouped[key]) grouped[key] = []
+                    grouped[key].push(m)
+                })
+                const threads = Object.entries(grouped).map(([email, msgs]) => ({
+                    user_email: email,
+                    user_name: email.split('@')[0],
+                    messages: msgs,
+                    unread_count: msgs.filter(m => m.sender === 'user' && !m.read).length
+                }))
+                setChatThreads(threads)
+            } catch { }
+        }
+    }, [adminToken])
+
+    const sendAdminReply = async (userEmail: string) => {
+        const text = chatReplyText[userEmail]?.trim()
+        if (!text) return
+        setChatReplyLoading(prev => ({ ...prev, [userEmail]: true }))
+        try {
+            await apiClient.post('/api/admin/chat/reply', { user_email: userEmail, text }, authHeader)
+            setChatReplyText(prev => ({ ...prev, [userEmail]: '' }))
+            toast.success(`Reply sent to ${userEmail}`)
+            fetchChatThreads()
+        } catch (e: any) {
+            toast.error(e.response?.data?.detail || 'Failed to send reply')
+        } finally {
+            setChatReplyLoading(prev => ({ ...prev, [userEmail]: false }))
+        }
+    }
+
     useEffect(() => {
         if (!isLoggedIn) return
         fetchStats(); fetchPending(); fetchUsers(); fetchDeposits(); fetchResets()
-        fetchNotifications(); fetchPrices(); fetchSettings()
+        fetchNotifications(); fetchPrices(); fetchSettings(); fetchChatThreads()
     }, [isLoggedIn])
 
     // ── ACTIONS ──────────────────────────────────────────────
@@ -285,10 +335,12 @@ const AdminPage = () => {
     }
 
     const unreadCount = notifications.filter(n => !n.read).length
+    const chatUnread = chatThreads.reduce((sum, t) => sum + t.unread_count, 0)
 
     const tabs = [
         { key: 'stats', label: 'Stats', icon: BarChart3 },
         { key: 'notifications', label: `Notifs${unreadCount > 0 ? ` (${unreadCount})` : ''}`, icon: Bell },
+        { key: 'chat', label: `Chat${chatUnread > 0 ? ` (${chatUnread})` : ''}`, icon: MessageCircle },
         { key: 'activate', label: `Activate (${pendingUsers.length})`, icon: CheckCircle },
         { key: 'users', label: 'Users', icon: Users },
         { key: 'credits', label: 'Credits', icon: CreditCard },
@@ -464,6 +516,101 @@ const AdminPage = () => {
                             </CardContent>
                         </Card>
                     ))}
+                </div>
+            )}
+
+            {/* ── CHAT ── */}
+            {activeTab === 'chat' && (
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h2 className="font-semibold">User Chat Messages {chatUnread > 0 && <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full ml-2">{chatUnread} unread</span>}</h2>
+                        <Button size="sm" variant="secondary" onClick={fetchChatThreads}><RefreshCw className="w-4 h-4" /></Button>
+                    </div>
+                    {chatThreads.length === 0 ? (
+                        <div className="glass rounded-xl p-8 text-center text-muted-foreground">No chat messages from users</div>
+                    ) : (
+                        <div className="grid gap-3 md:grid-cols-3">
+                            {/* Thread List */}
+                            <div className="space-y-2 md:col-span-1">
+                                {chatThreads.map(t => (
+                                    <button
+                                        key={t.user_email}
+                                        onClick={() => setSelectedChat(t.user_email)}
+                                        className={cn(
+                                            "w-full text-left p-3 rounded-xl transition-all text-sm",
+                                            selectedChat === t.user_email ? "bg-primary/10 border border-primary/30" : "glass hover:bg-muted/50"
+                                        )}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-medium truncate">{t.user_name || t.user_email}</span>
+                                            {t.unread_count > 0 && (
+                                                <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">{t.unread_count}</span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground truncate mt-0.5">{t.user_email}</p>
+                                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                            {t.messages[t.messages.length - 1]?.text.substring(0, 50)}...
+                                        </p>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Chat View */}
+                            <div className="md:col-span-2">
+                                {selectedChat ? (
+                                    <Card className="glass">
+                                        <CardHeader className="py-3">
+                                            <CardTitle className="text-sm flex items-center gap-2">
+                                                <MessageCircle className="w-4 h-4 text-primary" />
+                                                {chatThreads.find(t => t.user_email === selectedChat)?.user_name || selectedChat}
+                                                <span className="text-xs text-muted-foreground font-normal ml-auto">{selectedChat}</span>
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-2 max-h-80 overflow-y-auto">
+                                            {chatThreads.find(t => t.user_email === selectedChat)?.messages.map(msg => (
+                                                <div key={msg.id} className={cn("flex gap-2", msg.sender === 'admin' ? 'justify-end' : 'justify-start')}>
+                                                    <div className={cn(
+                                                        "max-w-[80%] px-3 py-2 rounded-xl text-xs",
+                                                        msg.sender === 'admin'
+                                                            ? 'bg-primary text-primary-foreground rounded-br-sm'
+                                                            : 'bg-muted text-foreground rounded-bl-sm'
+                                                    )}>
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5 opacity-70">
+                                                            {msg.sender === 'admin' ? 'You (Admin)' : chatThreads.find(t => t.user_email === selectedChat)?.user_name || 'User'}
+                                                        </p>
+                                                        <p className="whitespace-pre-wrap">{msg.text}</p>
+                                                        <p className="text-[9px] opacity-60 mt-1">{new Date(msg.created_at).toLocaleString()}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </CardContent>
+                                        <CardFooter className="pt-2">
+                                            <div className="flex gap-2 w-full">
+                                                <Input
+                                                    placeholder="Reply as admin..."
+                                                    value={chatReplyText[selectedChat] || ''}
+                                                    onChange={e => setChatReplyText(prev => ({ ...prev, [selectedChat!]: e.target.value }))}
+                                                    onKeyDown={e => { if (e.key === 'Enter') sendAdminReply(selectedChat!) }}
+                                                    className="flex-1 text-sm"
+                                                />
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => sendAdminReply(selectedChat!)}
+                                                    disabled={chatReplyLoading[selectedChat!] || !(chatReplyText[selectedChat]?.trim())}
+                                                >
+                                                    {chatReplyLoading[selectedChat!] ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                                </Button>
+                                            </div>
+                                        </CardFooter>
+                                    </Card>
+                                ) : (
+                                    <div className="glass rounded-xl p-8 text-center text-muted-foreground">
+                                        Select a user to view their messages
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

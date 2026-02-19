@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { HelmetProvider } from 'react-helmet-async'
 import { Toaster } from 'sonner'
-import { useAppStore, applyTheme } from '@/store/appStore'
+import { useAppStore, applyTheme, applyAccentColor } from '@/store/appStore'
 import { useAuthStore } from '@/store/authStore'
 import apiClient from '@/api/client'
 import RootLayout from '@/layouts/RootLayout'
@@ -19,18 +19,18 @@ import ApiDocsPage from '@/pages/ApiDocsPage'
 import ChatPage from '@/pages/ChatPage'
 
 function App() {
-  const { theme, currentPage } = useAppStore()
+  const { theme, accentColor, currentPage } = useAppStore()
   const { token, setUser, logout } = useAuthStore()
 
-  // Apply theme on mount and changes
+  // Apply theme + accent on mount and changes
   useEffect(() => {
     applyTheme(theme)
-    // Watch system preference changes
+    applyAccentColor(accentColor)
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const handler = () => { if (theme === 'system') applyTheme('system') }
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
-  }, [theme])
+  }, [theme, accentColor])
 
   // Re-hydrate user profile on page load if token exists
   useEffect(() => {
@@ -65,9 +65,9 @@ function App() {
         closeButton
         toastOptions={{
           style: {
-            background: 'hsl(220 25% 9%)',
-            border: '1px solid hsl(217 25% 16%)',
-            color: 'hsl(213 31% 91%)',
+            background: 'hsl(var(--card))',
+            border: '1px solid hsl(var(--border))',
+            color: 'hsl(var(--foreground))',
             fontFamily: 'Inter, sans-serif',
           },
         }}
