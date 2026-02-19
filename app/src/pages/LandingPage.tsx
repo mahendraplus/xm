@@ -279,7 +279,7 @@ const LandingPage = () => {
                     &copy; {new Date().getFullYear()} Go-Biz. All rights reserved.
                 </p>
                 <p className="text-xs text-muted-foreground/50 mt-2 font-mono">
-                    System Version v2.3 • Last Updated: {new Date().toLocaleString()}
+                    System Version v2.4 (Reset) • Last Updated: {new Date().toLocaleString()}
                 </p>
             </footer >
         </>
