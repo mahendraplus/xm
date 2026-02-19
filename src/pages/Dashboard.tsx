@@ -40,9 +40,24 @@ const Dashboard = () => {
     const [depositMsg, setDepositMsg] = useState('')
     const [depositOk, setDepositOk] = useState(false)
 
+    const fetchProfile = async () => {
+        try {
+            const res = await apiClient.get('/api/user/profile')
+            setUser(res.data)
+        } catch { }
+    }
+
     useEffect(() => {
-        if (!token) navigate('auth')
-        else fetchPayments()
+        if (!token) { navigate('auth'); return }
+        fetchPayments()
+        fetchProfile()
+
+        // Load Razorpay Script
+        const script = document.createElement('script')
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+        script.async = true
+        document.body.appendChild(script)
+        return () => { document.body.removeChild(script) }
     }, [token])
 
     const fetchPayments = async () => {
@@ -51,6 +66,51 @@ const Dashboard = () => {
             const res = await apiClient.get('/api/user/payment-requests')
             setPayments(res.data.requests || [])
         } catch { } finally { setPayLoading(false) }
+    }
+
+    const handleRazorpayPayment = async (amount: number) => {
+        if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return }
+        setLoading(true)
+        try {
+            // 1. Create Order
+            const orderRes = await apiClient.post('/api/payments/create-order', { amount })
+            const order = orderRes.data
+
+            const options = {
+                key: 'rzp_live_XXXXXXXXXXXXXX', // Should ideally come from settings or env
+                amount: order.amount,
+                currency: order.currency,
+                name: 'Go-Biz Enterprise',
+                description: 'Wallet Top-up',
+                order_id: order.id,
+                handler: async (response: any) => {
+                    setLoading(true)
+                    try {
+                        // 2. Verify Payment
+                        await apiClient.post('/api/payments/verify', {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature
+                        })
+                        toast.success('Credits added successfully!')
+                        fetchProfile()
+                        fetchPayments()
+                    } catch (err: any) {
+                        toast.error(err.response?.data?.msg || 'Verification failed')
+                    } finally { setLoading(false) }
+                },
+                prefill: {
+                    name: user?.name,
+                    email: user?.email,
+                },
+                theme: { color: '#3b82f6' }
+            }
+
+            const rzp = new (window as any).Razorpay(options)
+            rzp.open()
+        } catch (err: any) {
+            toast.error(err.response?.data?.detail || 'Failed to create order')
+        } finally { setLoading(false) }
     }
 
     const generateKey = async () => {
@@ -176,11 +236,57 @@ const Dashboard = () => {
 
             {/* Main Grid */}
             <div className="grid gap-6 md:grid-cols-2">
-                {/* Add Credits */}
+                {/* Razorpay Instant */}
+                <Card className="glass border-primary/30 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Zap className="w-16 h-16 text-primary" />
+                    </div>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Zap className="w-5 h-5 text-primary" /> Instant Recharge
+                        </CardTitle>
+                        <CardDescription>Automatic wallet top-up via Razorpay (UPI, Card, Netbanking)</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-3 gap-2">
+                            {[100, 500, 1000, 2000, 5000, 10000].map(amt => (
+                                <Button
+                                    key={amt}
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-primary/20 hover:border-primary/50 hover:bg-primary/5"
+                                    onClick={() => handleRazorpayPayment(amt)}
+                                    disabled={loading}
+                                >
+                                    ₹{amt}
+                                </Button>
+                            ))}
+                        </div>
+                        <div className="relative">
+                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input
+                                className="pl-8"
+                                placeholder="Custom Amount"
+                                type="number"
+                                value={depositAmount}
+                                onChange={e => setDepositAmount(e.target.value)}
+                            />
+                        </div>
+                        <Button
+                            className="w-full bg-primary hover:bg-primary/90 glow-primary"
+                            disabled={loading || !depositAmount}
+                            onClick={() => handleRazorpayPayment(parseFloat(depositAmount))}
+                        >
+                            {loading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />} Pay with Razorpay
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Add Credits (Manual) */}
                 <Card className="glass border-green-500/15">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Upload className="w-5 h-5 text-green-400" /> Add Credits
+                            <Upload className="w-5 h-5 text-green-400" /> Manual Recharge
                         </CardTitle>
                         <CardDescription>Transfer via UPI/Bank, then submit your UTR for admin verification.</CardDescription>
                     </CardHeader>
@@ -193,34 +299,28 @@ const Dashboard = () => {
                             </div>
                         ) : (
                             <form onSubmit={handleDeposit} className="space-y-3">
-                                <div className="relative">
-                                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                    <Input className="pl-8" placeholder="Amount (e.g. 5000)" type="number" min="0.01" step="0.01"
-                                        value={depositAmount} onChange={e => setDepositAmount(e.target.value)} required />
-                                </div>
+                                <Input placeholder="Amount (e.g. 5000)" type="number" min="1"
+                                    value={depositAmount} onChange={e => setDepositAmount(e.target.value)} required />
                                 <Input placeholder="UTR / Reference Number" value={depositUTR} onChange={e => setDepositUTR(e.target.value)} required />
                                 <Input placeholder="Screenshot URL (optional)" value={depositScreenshot} onChange={e => setDepositScreenshot(e.target.value)} />
-                                <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={depositLoading}>
-                                    {depositLoading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />} Submit Payment Request
+                                <Button type="submit" className="w-full bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30" disabled={depositLoading}>
+                                    {depositLoading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />} Submit UTR Request
                                 </Button>
-                                {depositMsg && !depositOk && (
-                                    <p className="text-sm text-center text-destructive">{depositMsg}</p>
-                                )}
                             </form>
                         )}
                     </CardContent>
                 </Card>
 
                 {/* Payment History */}
-                <Card className="glass">
+                <Card className="glass md:col-span-2">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Clock className="w-5 h-5" /> Payment History
+                            <Clock className="w-5 h-5 text-purple-400" /> Payment & Deposit History
                         </CardTitle>
-                        <CardDescription>Recent credit top-up requests</CardDescription>
+                        <CardDescription>Status of your recent credit top-up requests</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="overflow-y-auto max-h-52 space-y-2 pr-1">
+                        <div className="overflow-y-auto max-h-64 space-y-2 pr-1">
                             {payLoading ? (
                                 <div className="flex justify-center py-6">
                                     <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -231,24 +331,38 @@ const Dashboard = () => {
                                     <p className="text-sm">No payment requests yet.</p>
                                 </div>
                             ) : payments.map((p, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/8 transition-colors text-sm">
-                                    <div className="min-w-0">
-                                        <p className="font-medium">₹{p.amount}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{p.utr_number}</p>
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/8 transition-colors text-sm border border-white/5">
+                                    <div className="min-w-0 flex items-center gap-3">
+                                        <div className={cn("p-2 rounded-lg",
+                                            p.status === 'approved' ? 'bg-green-500/10 text-green-400' :
+                                                p.status === 'rejected' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400')}>
+                                            <IndianRupee className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold">₹{p.amount}</p>
+                                            <p className="text-xs text-muted-foreground truncate max-w-[150px]">{p.utr_number}</p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                        {p.status === 'approved' ? <CheckCircle2 className="w-4 h-4 text-green-500" /> :
-                                            p.status === 'rejected' ? <XCircle className="w-4 h-4 text-red-500" /> :
-                                                <Clock className="w-4 h-4 text-yellow-500" />}
-                                        <span className="capitalize text-xs">{p.status}</span>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <div className={cn("flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                            p.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                                                p.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                                                    'bg-yellow-500/20 text-yellow-400')}>
+                                            {p.status === 'approved' && <CheckCircle2 className="w-3 h-3" />}
+                                            {p.status === 'rejected' && <XCircle className="w-3 h-3" />}
+                                            {p.status !== 'approved' && p.status !== 'rejected' && <Clock className="w-3 h-3" />}
+                                            {p.status}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</p>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </CardContent>
-                    <CardFooter className="pt-0">
-                        <Button variant="ghost" size="sm" onClick={fetchPayments} className="w-full">
-                            <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+                    <CardFooter className="pt-0 flex justify-between">
+                        <p className="text-xs text-muted-foreground">Manual requests take 10-60 mins to verify.</p>
+                        <Button variant="ghost" size="sm" onClick={fetchPayments}>
+                            <RefreshCw className="w-3 h-3 mr-2" /> Refresh
                         </Button>
                     </CardFooter>
                 </Card>

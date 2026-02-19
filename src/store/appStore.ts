@@ -13,21 +13,45 @@ interface AppState {
 
 export const useAppStore = create<AppState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             theme: 'dark',
             currentPage: 'home',
             setTheme: (theme) => {
                 set({ theme })
                 applyTheme(theme)
             },
-            navigate: (page) => set({ currentPage: page }),
+            navigate: (page) => {
+                const prev = get().currentPage
+                if (prev === page) return
+                set({ currentPage: page })
+                // Push state to browser history for back/forward support
+                window.history.pushState({ page }, '', '')
+            },
         }),
         {
             name: 'app-settings',
-            partialize: (state) => ({ theme: state.theme }),
+            partialize: (state) => ({
+                theme: state.theme,
+                currentPage: state.currentPage
+            }),
         }
     )
 )
+
+// Sync popstate back to store
+if (typeof window !== 'undefined') {
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.page) {
+            useAppStore.setState({ currentPage: event.state.page })
+        }
+    })
+
+    // Initial push for the starting page
+    const state = useAppStore.getState()
+    if (!window.history.state) {
+        window.history.replaceState({ page: state.currentPage }, '', '')
+    }
+}
 
 export function applyTheme(theme: Theme) {
     const root = document.documentElement
