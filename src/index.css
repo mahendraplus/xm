@@ -36,31 +36,31 @@
 
 /* ─── LIGHT THEME ─── */
 [data-theme="light"] {
-  --background: 0 0% 98%;
-  --foreground: 222 47% 10%;
+  --background: 0 0% 100%;
+  --foreground: 222 47% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 10%;
+  --card-foreground: 222 47% 12%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 10%;
-  --primary: 217 91% 50%;
+  --popover-foreground: 222 47% 12%;
+  --primary: 217 91% 55%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 20% 90%;
-  --secondary-foreground: 222 47% 10%;
-  --muted: 210 20% 94%;
-  --muted-foreground: 215 16% 45%;
-  --accent: 210 20% 90%;
-  --accent-foreground: 222 47% 10%;
+  --secondary: 210 20% 96%;
+  --secondary-foreground: 222 47% 12%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 16% 40%;
+  --accent: 210 20% 96%;
+  --accent-foreground: 222 47% 12%;
   --destructive: 0 84% 50%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 20% 88%;
-  --input: 214 20% 90%;
-  --ring: 217 91% 50%;
+  --border: 214 20% 90%;
+  --input: 214 20% 92%;
+  --ring: 217 91% 55%;
 
-  --scrollbar-bg: hsl(210 20% 94%);
-  --scrollbar-thumb: hsl(214 20% 75%);
-  --scrollbar-thumb-hover: hsl(217 91% 50%);
-  --blob1: hsla(217, 91%, 60%, 0.06);
-  --blob2: hsla(260, 70%, 50%, 0.04);
+  --scrollbar-bg: hsl(210 20% 96%);
+  --scrollbar-thumb: hsl(214 20% 80%);
+  --scrollbar-thumb-hover: hsl(217 91% 55%);
+  --blob1: hsla(217, 91%, 60%, 0.08);
+  --blob2: hsla(260, 70%, 50%, 0.05);
 }
 
 /* ─── BASE RESET ─── */
@@ -167,6 +167,14 @@
     70% {
       box-shadow: 0 0 0 10px hsl(var(--primary)/0);
     }
+  }
+
+  .custom-switch {
+    @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .custom-switch-thumb {
+    @apply pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform;
   }
 }
 

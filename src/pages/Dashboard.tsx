@@ -331,7 +331,7 @@ const Dashboard = () => {
                                     <p className="text-sm">No payment requests yet.</p>
                                 </div>
                             ) : payments.map((p, i) => (
-                                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/8 transition-colors text-sm border border-white/5">
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors text-sm border border-border/50">
                                     <div className="min-w-0 flex items-center gap-3">
                                         <div className={cn("p-2 rounded-lg",
                                             p.status === 'approved' ? 'bg-green-500/10 text-green-400' :

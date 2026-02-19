@@ -121,7 +121,7 @@ const SearchPage = () => {
             )}
 
             {/* Field Selector */}
-            <Card className="glass border-white/10">
+            <Card className="glass border-border/50">
                 <CardHeader>
                     <CardTitle className="text-base flex items-center justify-between">
                         Select Data Fields
@@ -142,8 +142,8 @@ const SearchPage = () => {
                                     className={cn(
                                         "flex flex-col items-center gap-1 p-3 rounded-xl border text-xs font-medium transition-all",
                                         selected
-                                            ? "border-primary bg-primary/15 text-primary"
-                                            : "border-white/10 bg-white/3 text-muted-foreground hover:border-white/20"
+                                            ? "border-primary bg-primary/10 text-primary shadow-sm"
+                                            : "border-border/50 bg-muted/30 text-muted-foreground hover:border-border"
                                     )}
                                 >
                                     <f.icon className="w-4 h-4" />

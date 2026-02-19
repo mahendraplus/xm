@@ -430,14 +430,14 @@ const AdminPage = () => {
                     </div>
                     <div className="overflow-x-auto rounded-xl glass">
                         <table className="w-full text-sm">
-                            <thead><tr className="border-b border-white/10">
+                            <thead><tr className="border-b border-white/10 dark:border-white/10">
                                 {['Name', 'Email', 'Credits', 'Spent', 'Searches', 'Status', 'Actions'].map(h => (
                                     <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
                                 ))}
                             </tr></thead>
                             <tbody>
                                 {users.map(u => (
-                                    <tr key={u.email} className="border-b border-white/5 hover:bg-white/3">
+                                    <tr key={u.email} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
                                         <td className="px-4 py-3 font-medium">{u.name}</td>
                                         <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                                         <td className="px-4 py-3">₹{u.credits?.toFixed(2)}</td>
@@ -569,14 +569,14 @@ const AdminPage = () => {
                     )}
                     <div className="overflow-x-auto rounded-xl glass">
                         <table className="w-full text-sm">
-                            <thead><tr className="border-b border-white/10">
+                            <thead><tr className="border-b border-border/50">
                                 {['User', 'Amount', 'UTR', 'Status', 'Date'].map(h => (
                                     <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
                                 ))}
                             </tr></thead>
                             <tbody>
                                 {allDeposits.map((d, i) => (
-                                    <tr key={i} className="border-b border-white/5 hover:bg-white/3">
+                                    <tr key={i} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
                                         <td className="px-4 py-3 text-muted-foreground">{d.user_id}</td>
                                         <td className="px-4 py-3 font-medium">₹{d.amount}</td>
                                         <td className="px-4 py-3 text-xs">{d.utr_number}</td>
@@ -746,11 +746,11 @@ const AdminPage = () => {
                                     </div>
                                     <button
                                         onClick={() => handleUpdateSettings({ [s.key]: !settingsDraft[s.key] })}
-                                        className={cn("relative w-11 h-6 rounded-full transition-colors",
-                                            settingsDraft[s.key] ? 'bg-primary' : 'bg-muted')}
+                                        className={cn("custom-switch transition-all duration-200",
+                                            settingsDraft[s.key] ? 'bg-primary' : 'bg-muted-foreground/20')}
                                     >
-                                        <span className={cn("absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
-                                            settingsDraft[s.key] ? 'translate-x-5' : 'translate-x-1')} />
+                                        <span className={cn("custom-switch-thumb shadow-md",
+                                            settingsDraft[s.key] ? 'translate-x-5' : 'translate-x-0')} />
                                     </button>
                                 </div>
                             ))}

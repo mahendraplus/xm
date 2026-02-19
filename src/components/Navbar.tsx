@@ -43,7 +43,7 @@ const Navbar = () => {
         <nav
             className={cn(
                 "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
-                scrolled ? "glass border-white/5 shadow-lg py-3" : "bg-transparent border-transparent py-5"
+                scrolled ? "glass border-border/50 shadow-lg py-3" : "bg-transparent border-transparent py-5"
             )}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -62,7 +62,7 @@ const Navbar = () => {
                         <div className="relative">
                             <button
                                 onClick={() => setShowThemeMenu(v => !v)}
-                                className="p-2 rounded-md hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors"
+                                className="p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                                 title="Toggle theme"
                             >
                                 <ThemeIcon theme={theme} />
@@ -73,7 +73,7 @@ const Navbar = () => {
                                         initial={{ opacity: 0, scale: 0.9, y: -4 }}
                                         animate={{ opacity: 1, scale: 1, y: 0 }}
                                         exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                                        className="absolute right-0 mt-2 w-32 glass rounded-lg shadow-lg p-1 z-50"
+                                        className="absolute right-0 mt-2 w-32 glass rounded-lg shadow-lg p-1 z-50 border border-border/50"
                                     >
                                         {themes.map(t => (
                                             <button
@@ -81,7 +81,7 @@ const Navbar = () => {
                                                 onClick={() => { setTheme(t); setShowThemeMenu(false); toast(`Theme: ${t}`) }}
                                                 className={cn(
                                                     "flex items-center gap-2 w-full px-3 py-2 rounded text-sm capitalize",
-                                                    theme === t ? "bg-primary/20 text-primary" : "hover:bg-white/5 text-muted-foreground"
+                                                    theme === t ? "bg-primary/20 text-primary" : "hover:bg-muted text-muted-foreground"
                                                 )}
                                             >
                                                 <ThemeIcon theme={t} /> {t}
@@ -113,11 +113,11 @@ const Navbar = () => {
                     <div className="md:hidden flex items-center gap-2">
                         <button
                             onClick={() => { const t: Theme[] = ['dark', 'light', 'system']; const idx = t.indexOf(theme); setTheme(t[(idx + 1) % 3]) }}
-                            className="p-2 rounded-md hover:bg-white/5 text-muted-foreground"
+                            className="p-2 rounded-md hover:bg-muted text-muted-foreground"
                         >
                             <ThemeIcon theme={theme} />
                         </button>
-                        <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-md hover:bg-white/5 transition-colors text-foreground">
+                        <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-md hover:bg-muted transition-colors text-foreground">
                             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                         </button>
                     </div>
@@ -131,7 +131,7 @@ const Navbar = () => {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="md:hidden border-t border-white/5 glass"
+                        className="md:hidden border-t border-border/50 glass"
                     >
                         <div className="px-4 py-6 space-y-3">
                             {user ? (
