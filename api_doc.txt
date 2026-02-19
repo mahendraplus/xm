@@ -254,19 +254,21 @@ SECTION 4: USER ENDPOINTS (AUTHENTICATED)
    LABEL : Search API (Real Success Outcome)
    OUTPUT: {
     "status": "success",
-    "data": {
-        "mobile": 9876543210,
-        "name": "MR. DEEPAK MEHTA",
-        "fname": "CHANDER PRAKASH MEHTA",
-        "address": "D71 ! KAMLA NAGAR ! KAMLA NAGARNORTH DELHI ! DELHI ! DELHI ! 110007",
-        "email": null,
-        "alt": "9999400000",
-        "dob": null,
-        "gender": null,
-        "carrier": null,
-        "circle": "Delhi Voda",
-        "id": "886553666165"
-    },
+    "data": [
+        {
+            "mobile": 9876543210,
+            "name": "MR. DEEPAK MEHTA",
+            "fname": "CHANDER PRAKASH MEHTA",
+            "address": "D71 ! KAMLA NAGAR ! KAMLA NAGARNORTH DELHI ! DELHI ! DELHI ! 110007",
+            "email": null,
+            "alt": "9999400000",
+            "dob": null,
+            "gender": null,
+            "carrier": null,
+            "circle": "Delhi Voda",
+            "id": "886553666165"
+        }
+    ],
     "billing": {
         "base_fee": 1.0,
         "field_charges": {
