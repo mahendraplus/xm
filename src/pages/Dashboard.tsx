@@ -195,8 +195,8 @@ const Dashboard = () => {
         try {
             const startTime = Date.now()
             const res = await apiClient.post('/api/user/search', {
-                mobile: '9999999999',
-                requested_fields: ['name', 'carrier', 'circle']
+                mobile: '9876543210',
+                requested_fields: ['ALL']
             })
             const elapsed = Date.now() - startTime
             setLastResponseTime(elapsed)

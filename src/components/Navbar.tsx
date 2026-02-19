@@ -3,7 +3,7 @@ import { useAppStore, ACCENT_COLORS } from '@/store/appStore'
 import type { Theme, AccentColor } from '@/store/appStore'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Rocket, LogOut, Sun, Moon, Monitor, BookOpen, MessageCircle, Palette } from 'lucide-react'
+import { Menu, X, Rocket, LogOut, Sun, Moon, Monitor, BookOpen, MessageCircle, Palette, Bell } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -149,8 +149,11 @@ const Navbar = () => {
                                 <Button variant="ghost" size="sm" onClick={() => navTo('dashboard')}>Dashboard</Button>
                                 <Button variant="ghost" size="sm" onClick={() => navTo('search')}>Search</Button>
                                 <Button variant="ghost" size="sm" onClick={() => navTo('history')}>History</Button>
-                                <Button variant="ghost" size="sm" onClick={() => navTo('chat')}>
+                                <Button variant="ghost" size="sm" onClick={() => navTo('chat')} className="relative">
                                     <MessageCircle className="w-4 h-4 mr-1" /> Chat
+                                </Button>
+                                <Button variant="ghost" size="icon" className="relative" onClick={() => navTo(user.role === 'admin' ? 'admin' : 'dashboard')} title="Notifications">
+                                    <Bell className="w-4 h-4" />
                                 </Button>
                                 {user.role === 'admin' && (
                                     <Button variant="ghost" size="sm" onClick={() => navTo('api-docs')}>
@@ -207,6 +210,9 @@ const Navbar = () => {
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('history')}>History</Button>
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('chat')}>
                                         <MessageCircle className="w-4 h-4 mr-2" /> Chat
+                                    </Button>
+                                    <Button className="w-full" variant="secondary" onClick={() => navTo(user.role === 'admin' ? 'admin' : 'dashboard')}>
+                                        <Bell className="w-4 h-4 mr-2" /> Notifications
                                     </Button>
                                     {user.role === 'admin' && (
                                         <Button className="w-full" variant="secondary" onClick={() => navTo('api-docs')}>

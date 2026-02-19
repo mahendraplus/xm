@@ -173,28 +173,33 @@ const AdminPage = () => {
 
     const fetchChatThreads = useCallback(async () => {
         try {
-            const r = await apiClient.get('/api/admin/chat/threads', authHeader)
-            setChatThreads(r.data.threads || r.data || [])
-        } catch {
-            // fallback: try individual chat history
-            try {
-                const r = await apiClient.get('/api/admin/chat/all', authHeader)
-                const allMsgs = r.data.messages || r.data || []
-                // Group by user
-                const grouped: Record<string, ChatMsg[]> = {}
-                allMsgs.forEach((m: any) => {
-                    const key = m.user_email || m.user_id || 'unknown'
-                    if (!grouped[key]) grouped[key] = []
-                    grouped[key].push(m)
-                })
-                const threads = Object.entries(grouped).map(([email, msgs]) => ({
-                    user_email: email,
-                    user_name: email.split('@')[0],
-                    messages: msgs,
-                    unread_count: msgs.filter(m => m.sender === 'user' && !m.read).length
-                }))
-                setChatThreads(threads)
-            } catch { }
+            // API: GET /api/chat/admin/list
+            const r = await apiClient.get('/api/chat/admin/list', authHeader)
+            const chatList = Array.isArray(r.data) ? r.data : (r.data.chats || [])
+            // For each chat, fetch messages
+            const threads: ChatThread[] = []
+            for (const chat of chatList) {
+                try {
+                    const hr = await apiClient.get(`/api/chat/admin/history/${chat.user_email || chat.id}`, authHeader)
+                    const msgs = Array.isArray(hr.data) ? hr.data : (hr.data.messages || [])
+                    threads.push({
+                        user_email: chat.user_email || chat.id,
+                        user_name: (chat.user_email || chat.id).split('@')[0],
+                        messages: msgs,
+                        unread_count: chat.has_unread_admin ? 1 : 0
+                    })
+                } catch {
+                    threads.push({
+                        user_email: chat.user_email || chat.id,
+                        user_name: (chat.user_email || chat.id).split('@')[0],
+                        messages: [],
+                        unread_count: 0
+                    })
+                }
+            }
+            setChatThreads(threads)
+        } catch (e) {
+            console.error('Failed to fetch chat threads', e)
         }
     }, [adminToken])
 
@@ -203,10 +208,16 @@ const AdminPage = () => {
         if (!text) return
         setChatReplyLoading(prev => ({ ...prev, [userEmail]: true }))
         try {
-            await apiClient.post('/api/admin/chat/reply', { user_email: userEmail, text }, authHeader)
+            // API: POST /api/chat/admin/send/{email}
+            await apiClient.post(`/api/chat/admin/send/${userEmail}`, { text }, authHeader)
             setChatReplyText(prev => ({ ...prev, [userEmail]: '' }))
             toast.success(`Reply sent to ${userEmail}`)
-            fetchChatThreads()
+            // Refresh just this thread
+            try {
+                const hr = await apiClient.get(`/api/chat/admin/history/${userEmail}`, authHeader)
+                const msgs = Array.isArray(hr.data) ? hr.data : (hr.data.messages || [])
+                setChatThreads(prev => prev.map(t => t.user_email === userEmail ? { ...t, messages: msgs } : t))
+            } catch { }
         } catch (e: any) {
             toast.error(e.response?.data?.detail || 'Failed to send reply')
         } finally {
@@ -259,7 +270,8 @@ const AdminPage = () => {
             await apiClient.post(`/api/admin/requests/password-resets/${req.id}/resolve`,
                 { new_temp_password: newPass }, authHeader)
             toast.success(`Password set for ${req.email} — copy and send it!`)
-            fetchResets()
+            // Update status locally instead of refetching (which would hide the card)
+            setResets(prev => prev.map(r => r.id === req.id ? { ...r, status: 'resolved' } : r))
         } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
     }
 
@@ -325,9 +337,22 @@ const AdminPage = () => {
         } catch { }
     }
 
-    const copyPass = (pass: string, email: string) => {
-        navigator.clipboard.writeText(pass)
-        toast.success(`Password copied! Send to ${email}`)
+    const copyPass = async (pass: string, email: string) => {
+        try {
+            await navigator.clipboard.writeText(pass)
+            toast.success(`Password copied! Send to ${email}`)
+        } catch {
+            // Fallback for HTTP contexts
+            const ta = document.createElement('textarea')
+            ta.value = pass
+            ta.style.position = 'fixed'
+            ta.style.left = '-9999px'
+            document.body.appendChild(ta)
+            ta.select()
+            document.execCommand('copy')
+            document.body.removeChild(ta)
+            toast.success(`Password copied! Send to ${email}`)
+        }
     }
 
     const adminLogout = () => {

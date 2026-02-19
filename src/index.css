@@ -240,8 +240,63 @@
   background: radial-gradient(ellipse at bottom right, var(--blob2) 0%, transparent 60%);
 }
 
-/* Light theme: use subtle shadows instead of backdrop blur for progress bars */
+/* Light theme: use subtle shadows instead of backdrop blur for overlays */
 [data-theme="light"] .bg-white\/5,
 [data-theme="light"] .bg-white\/10 {
   background: hsl(var(--muted));
+}
+
+/* Fix dark-only backgrounds in light theme */
+[data-theme="light"] .bg-black\/40,
+[data-theme="light"] .bg-black\/50,
+[data-theme="light"] .bg-black\/60 {
+  background: hsl(var(--card));
+}
+
+/* Fix green/colored code text in light theme */
+[data-theme="light"] .text-green-300,
+[data-theme="light"] .text-green-400 {
+  color: hsl(142, 71%, 35%);
+}
+
+/* Ensure foreground text is always readable */
+[data-theme="light"] .text-foreground,
+[data-theme="light"] h1,
+[data-theme="light"] h2,
+[data-theme="light"] h3,
+[data-theme="light"] h4 {
+  color: hsl(222, 47%, 11%);
+}
+
+/* Fix card borders in light theme */
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/20 {
+  border-color: hsl(var(--border));
+}
+
+/* Fix hover states */
+[data-theme="light"] .hover\:bg-white\/10:hover {
+  background: hsl(var(--muted));
+}
+
+/* Fix card backgrounds that use opacity-based dark overlays */
+[data-theme="light"] .bg-card\/20,
+[data-theme="light"] .bg-card\/30,
+[data-theme="light"] .bg-card\/80 {
+  background: hsl(0 0% 100% / 0.9);
+}
+
+/* Fix muted-foreground for better readability */
+[data-theme="light"] .text-muted-foreground {
+  color: hsl(215, 16%, 42%);
+}
+
+/* Fix primary/10 backgrounds */
+[data-theme="light"] .bg-primary\/10 {
+  background: hsl(var(--primary) / 0.08);
+}
+
+[data-theme="light"] .bg-primary\/20 {
+  background: hsl(var(--primary) / 0.12);
 }
