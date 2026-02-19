@@ -270,6 +270,18 @@ const LandingPage = () => {
                     )}
                 </div>
             </section>
+        </div >
+            </section >
+
+    {/* Footer */ }
+    < footer className = "py-8 border-t border-white/5 bg-black/20 text-center" >
+                <p className="text-muted-foreground text-sm">
+                    &copy; {new Date().getFullYear()} Go-Biz. All rights reserved.
+                </p>
+                <p className="text-xs text-muted-foreground/50 mt-2 font-mono">
+                    System Version v2.3 • Last Updated: {new Date().toLocaleString()}
+                </p>
+            </footer >
         </>
     )
 }
