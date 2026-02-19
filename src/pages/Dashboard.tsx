@@ -31,6 +31,7 @@ const Dashboard = () => {
     const [payLoading, setPayLoading] = useState(false)
     const [curlResult, setCurlResult] = useState('')
     const [curlLoading, setCurlLoading] = useState(false)
+    const [totalSpent, setTotalSpent] = useState(0)
 
     // Deposit form
     const [depositAmount, setDepositAmount] = useState('')
@@ -47,10 +48,22 @@ const Dashboard = () => {
         } catch { }
     }
 
+    const fetchTotalSpent = async () => {
+        try {
+            const res = await apiClient.get('/api/user/history')
+            const history = res.data.history || []
+            const spent = history.reduce((sum: number, entry: any) => {
+                return sum + (entry.billing?.total_deducted || 0)
+            }, 0)
+            setTotalSpent(spent)
+        } catch { }
+    }
+
     useEffect(() => {
         if (!token) { navigate('auth'); return }
         fetchPayments()
         fetchProfile()
+        fetchTotalSpent()
 
         // Load Razorpay Script
         const script = document.createElement('script')
@@ -172,8 +185,6 @@ const Dashboard = () => {
 
     if (!user) return null
 
-    const creditUsed = user.total_spent || 0
-
     return (
         <div className="space-y-8">
             <Helmet><title>Dashboard | Go-Biz</title></Helmet>
@@ -205,7 +216,7 @@ const Dashboard = () => {
                 {[
                     { label: 'Wallet Balance', val: `₹${user.credits?.toFixed(2) ?? '0.00'}`, icon: Wallet, color: 'text-blue-400', bg: 'bg-blue-500/10' },
                     { label: 'Total Searches', val: user.searches ?? 0, icon: BarChart3, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-                    { label: 'Credits Spent', val: `₹${creditUsed.toFixed(2)}`, icon: TrendingUp, color: 'text-orange-400', bg: 'bg-orange-500/10' },
+                    { label: 'Credits Spent', val: `₹${totalSpent.toFixed(2)}`, icon: TrendingUp, color: 'text-orange-400', bg: 'bg-orange-500/10' },
                     { label: 'Account', val: user.account_status || 'ACTIVE', icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-500/10' },
                 ].map(s => (
                     <Card key={s.label} className="glass hover:border-white/20 transition-colors">

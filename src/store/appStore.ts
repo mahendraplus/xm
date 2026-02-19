@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type Theme = 'dark' | 'light' | 'system'
-export type Page = 'home' | 'auth' | 'dashboard' | 'search' | 'history' | 'admin' | 'forgot-password' | '404'
+export type Page = 'home' | 'auth' | 'dashboard' | 'search' | 'history' | 'admin' | 'forgot-password' | 'api-docs' | 'chat' | '404'
 
 interface AppState {
     theme: Theme

@@ -2,51 +2,21 @@ import { Rocket } from 'lucide-react'
 
 const Footer = () => {
     return (
-        <footer className="border-t border-white/5 bg-black/20 backdrop-blur-lg mt-auto">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                    <div className="space-y-4">
-                        <div className="flex items-center space-x-2">
-                            <div className="bg-primary/20 p-2 rounded-lg">
-                                <Rocket className="w-5 h-5 text-primary" />
-                            </div>
-                            <span className="text-lg font-bold">Go-Biz</span>
+        <footer className="border-t border-border/30 bg-card/30 backdrop-blur-lg mt-auto">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center space-x-2">
+                        <div className="bg-primary/20 p-2 rounded-lg">
+                            <Rocket className="w-4 h-4 text-primary" />
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                            Modern API solutions for business intelligence and data access.
-                            Secure, fast, and reliable.
-                        </p>
+                        <span className="text-sm font-bold text-foreground">Go-Biz</span>
+                        <span className="text-xs text-muted-foreground hidden sm:inline">
+                            — Modern API solutions for business intelligence.
+                        </span>
                     </div>
-
-                    <div>
-                        <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-white">Product</h4>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                            <li className="hover:text-primary transition-colors cursor-pointer">Features</li>
-                            <li className="hover:text-primary transition-colors cursor-pointer">Pricing</li>
-                            <li className="hover:text-primary transition-colors cursor-pointer">API Docs</li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-white">Company</h4>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                            <li className="hover:text-primary transition-colors cursor-pointer">About</li>
-                            <li className="hover:text-primary transition-colors cursor-pointer">Blog</li>
-                            <li className="hover:text-primary transition-colors cursor-pointer">Careers</li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 className="font-semibold mb-4 text-sm uppercase tracking-wider text-white">Legal</h4>
-                        <ul className="space-y-2 text-sm text-muted-foreground">
-                            <li className="hover:text-primary transition-colors cursor-pointer">Privacy</li>
-                            <li className="hover:text-primary transition-colors cursor-pointer">Terms</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div className="mt-12 pt-8 border-t border-white/5 text-center text-sm text-muted-foreground">
-                    © {new Date().getFullYear()} Go-Biz Inc. All rights reserved.
+                    <p className="text-xs text-muted-foreground">
+                        © {new Date().getFullYear()} Go-Biz Inc. All rights reserved.
+                    </p>
                 </div>
             </div>
         </footer>

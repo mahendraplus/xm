@@ -3,7 +3,7 @@ import { useAppStore } from '@/store/appStore'
 import type { Theme } from '@/store/appStore'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Rocket, LogOut, Sun, Moon, Monitor } from 'lucide-react'
+import { Menu, X, Rocket, LogOut, Sun, Moon, Monitor, BookOpen, MessageCircle } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -57,7 +57,12 @@ const Navbar = () => {
                     </button>
 
                     {/* Desktop Nav */}
-                    <div className="hidden md:flex items-center space-x-6">
+                    <div className="hidden md:flex items-center space-x-2">
+                        {/* API Docs - always visible */}
+                        <Button variant="ghost" size="sm" onClick={() => navTo('api-docs')}>
+                            <BookOpen className="w-4 h-4 mr-1" /> API Docs
+                        </Button>
+
                         {/* Theme Toggle */}
                         <div className="relative">
                             <button
@@ -97,6 +102,9 @@ const Navbar = () => {
                                 <Button variant="ghost" size="sm" onClick={() => navTo('dashboard')}>Dashboard</Button>
                                 <Button variant="ghost" size="sm" onClick={() => navTo('search')}>Search</Button>
                                 <Button variant="ghost" size="sm" onClick={() => navTo('history')}>History</Button>
+                                <Button variant="ghost" size="sm" onClick={() => navTo('chat')}>
+                                    <MessageCircle className="w-4 h-4 mr-1" /> Chat
+                                </Button>
                                 <Button variant="destructive" size="sm" onClick={handleLogout}>
                                     <LogOut className="w-4 h-4 mr-1" /> Logout
                                 </Button>
@@ -134,11 +142,17 @@ const Navbar = () => {
                         className="md:hidden border-t border-border/50 glass"
                     >
                         <div className="px-4 py-6 space-y-3">
+                            <Button className="w-full" variant="secondary" onClick={() => navTo('api-docs')}>
+                                <BookOpen className="w-4 h-4 mr-2" /> API Docs
+                            </Button>
                             {user ? (
                                 <>
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('dashboard')}>Dashboard</Button>
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('search')}>Search</Button>
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('history')}>History</Button>
+                                    <Button className="w-full" variant="secondary" onClick={() => navTo('chat')}>
+                                        <MessageCircle className="w-4 h-4 mr-2" /> Chat
+                                    </Button>
                                     <Button className="w-full" variant="destructive" onClick={handleLogout}>
                                         <LogOut className="w-4 h-4 mr-2" /> Logout
                                     </Button>

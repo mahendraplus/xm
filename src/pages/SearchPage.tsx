@@ -30,7 +30,7 @@ const BASE_FEE = 1.0
 const SearchPage = () => {
     const { user, setUser } = useAuthStore()
     const { navigate } = useAppStore()
-    const { register, handleSubmit, setValue, formState: { errors } } = useForm()
+    const { register, handleSubmit, formState: { errors } } = useForm()
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState<any>(null)
     const [error, setError] = useState('')
@@ -182,15 +182,6 @@ const SearchPage = () => {
                                 pattern: /^[6-9]\d{9}$/
                             })}
                         />
-                        {/* Test Button inside input */}
-                        <button
-                            type="button"
-                            onClick={() => setValue('mobile', '9876543210')}
-                            className="absolute right-2 top-3 h-8 px-3 text-xs bg-primary/10 text-primary hover:bg-primary/20 rounded-md transition-colors font-medium"
-                        >
-                            Try Demo
-                        </button>
-
                         {errors.mobile && (
                             <span className="hidden">Enter a valid 10-digit Indian mobile number</span>
                         )}

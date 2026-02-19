@@ -36,31 +36,31 @@
 
 /* ─── LIGHT THEME ─── */
 [data-theme="light"] {
-  --background: 0 0% 100%;
-  --foreground: 222 47% 12%;
+  --background: 210 20% 98%;
+  --foreground: 222 47% 11%;
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 12%;
+  --card-foreground: 222 47% 11%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 12%;
-  --primary: 217 91% 55%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 217 91% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 210 20% 96%;
-  --secondary-foreground: 222 47% 12%;
-  --muted: 210 20% 96%;
-  --muted-foreground: 215 16% 40%;
-  --accent: 210 20% 96%;
-  --accent-foreground: 222 47% 12%;
+  --secondary: 210 18% 93%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 18% 93%;
+  --muted-foreground: 215 16% 36%;
+  --accent: 210 18% 93%;
+  --accent-foreground: 222 47% 11%;
   --destructive: 0 84% 50%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 20% 90%;
-  --input: 214 20% 92%;
-  --ring: 217 91% 55%;
+  --border: 214 20% 85%;
+  --input: 214 20% 90%;
+  --ring: 217 91% 50%;
 
   --scrollbar-bg: hsl(210 20% 96%);
-  --scrollbar-thumb: hsl(214 20% 80%);
-  --scrollbar-thumb-hover: hsl(217 91% 55%);
-  --blob1: hsla(217, 91%, 60%, 0.08);
-  --blob2: hsla(260, 70%, 50%, 0.05);
+  --scrollbar-thumb: hsl(214 20% 78%);
+  --scrollbar-thumb-hover: hsl(217 91% 50%);
+  --blob1: hsla(217, 91%, 60%, 0.06);
+  --blob2: hsla(260, 70%, 50%, 0.04);
 }
 
 /* ─── BASE RESET ─── */

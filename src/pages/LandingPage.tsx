@@ -8,7 +8,6 @@ import apiClient from '@/api/client'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/appStore'
 
-// Stats Interface
 interface Stats {
     total_users: number
     total_searches: number
@@ -19,24 +18,17 @@ interface Stats {
         billing: { total_deducted: number }
     }>
 }
-interface Pricing { basic: number; address: number; full_kyc: number; deep: number }
 
 const LandingPage = () => {
     const { navigate } = useAppStore()
     const [stats, setStats] = useState<Stats | null>(null)
-    const [pricing, setPricing] = useState<Pricing | null>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [statsRes, pricingRes] = await Promise.all([
-                    apiClient.get('/api/stats').catch(() => null), // Graceful fail
-                    apiClient.get('/api/pricing').catch(() => null)
-                ])
-
+                const statsRes = await apiClient.get('/api/stats').catch(() => null)
                 if (statsRes) setStats(statsRes.data)
-                if (pricingRes) setPricing(pricingRes.data)
             } catch (error) {
                 console.error("Failed to fetch public data", error)
             } finally {
@@ -117,30 +109,30 @@ const LandingPage = () => {
                         <Button size="lg" className="w-full sm:w-auto text-lg h-12 px-8 glow-primary" onClick={() => navigate('auth')}>
                             Start Free Trial <ArrowRight className="ml-2 w-5 h-5" />
                         </Button>
-                        <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg h-12 px-8" onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
-                            View Pricing
+                        <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg h-12 px-8" onClick={() => navigate('api-docs')}>
+                            View API Docs
                         </Button>
                     </motion.div>
                 </div>
             </section>
 
             {/* Stats Section */}
-            <section className="py-12 border-y border-white/5 bg-black/20 backdrop-blur-sm">
+            <section className="py-12 border-y border-border/30 bg-card/20 backdrop-blur-sm">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                     <div className="space-y-2">
-                        <h3 className="text-4xl font-bold text-white">{stats ? stats.total_users.toLocaleString() : '100+'}</h3>
+                        <h3 className="text-4xl font-bold text-foreground">{stats ? stats.total_users.toLocaleString() : '100+'}</h3>
                         <p className="text-muted-foreground text-sm uppercase tracking-wider">Active Users</p>
                     </div>
                     <div className="space-y-2">
-                        <h3 className="text-4xl font-bold text-white">{stats ? stats.total_searches.toLocaleString() : '5k+'}</h3>
+                        <h3 className="text-4xl font-bold text-foreground">{stats ? stats.total_searches.toLocaleString() : '5k+'}</h3>
                         <p className="text-muted-foreground text-sm uppercase tracking-wider">Total Searches</p>
                     </div>
                     <div className="space-y-2">
-                        <h3 className="text-4xl font-bold text-white">99.9%</h3>
+                        <h3 className="text-4xl font-bold text-foreground">99.9%</h3>
                         <p className="text-muted-foreground text-sm uppercase tracking-wider">Uptime</p>
                     </div>
                     <div className="space-y-2">
-                        <h3 className="text-4xl font-bold text-white">24/7</h3>
+                        <h3 className="text-4xl font-bold text-foreground">24/7</h3>
                         <p className="text-muted-foreground text-sm uppercase tracking-wider">Support</p>
                     </div>
                 </div>
@@ -169,7 +161,7 @@ const LandingPage = () => {
                                             <Search className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <p className="font-bold text-white">{r.mobile_mask}</p>
+                                            <p className="font-bold text-foreground">{r.mobile_mask}</p>
                                             <p className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleTimeString()}</p>
                                         </div>
                                     </div>
@@ -201,7 +193,7 @@ const LandingPage = () => {
                                     viewport={{ once: true }}
                                     transition={{ delay: index * 0.1 }}
                                 >
-                                    <Card className="h-full hover:bg-white/5 transition-all border-white/10 group cursor-default">
+                                    <Card className={cn("h-full hover:bg-muted/30 transition-all border-border/50 group cursor-default")}>
                                         <CardHeader>
                                             <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors w-fit">
                                                 <feature.icon className="w-6 h-6 text-primary" />
@@ -218,67 +210,6 @@ const LandingPage = () => {
                     </div>
                 </div>
             </section>
-
-            {/* Pricing Section */}
-            <section id="pricing" className="py-20 bg-black/20">
-                <div className="text-center mb-16 space-y-4">
-                    <h2 className="text-3xl md:text-5xl font-bold">Simple Pricing</h2>
-                    <p className="text-muted-foreground">Pay only for what you verify.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-                    {pricing ? (
-                        Object.entries(pricing).map(([plan, cost], index) => (
-                            <motion.div
-                                key={plan}
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                            >
-                                <Card className={cn(
-                                    "relative h-full border-white/10",
-                                    plan === 'full_kyc' ? "border-primary/50 shadow-[0_0_30px_rgba(59,130,246,0.2)]" : ""
-                                )}>
-                                    {plan === 'full_kyc' && (
-                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-bold">
-                                            POPULAR
-                                        </div>
-                                    )}
-                                    <CardHeader>
-                                        <CardTitle className="capitalize">{plan.replace('_', ' ')}</CardTitle>
-                                        <div className="text-3xl font-bold mt-2">
-                                            {cost} <span className="text-lg font-normal text-muted-foreground">Credits</span>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <ul className="space-y-4 text-sm text-muted-foreground">
-                                            <li className="flex items-center"><ArrowRight className="w-4 h-4 mr-2 text-primary" /> Instant Results</li>
-                                            <li className="flex items-center"><ArrowRight className="w-4 h-4 mr-2 text-primary" /> Secure Access</li>
-                                        </ul>
-                                        <Button className="w-full mt-8" variant={plan === 'full_kyc' ? 'default' : 'outline'} onClick={() => navigate('auth')}>
-                                            Get {plan.replace('_', ' ')}
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            </motion.div>
-                        ))
-                    ) : (
-                        <div className="col-span-4 text-center text-muted-foreground">
-                            Loading pricing...
-                        </div>
-                    )}
-                </div>
-            </section>
-            {/* Footer */}
-            <footer className="py-8 border-t border-white/5 bg-black/20 text-center">
-                <p className="text-muted-foreground text-sm">
-                    &copy; {new Date().getFullYear()} Go-Biz. All rights reserved.
-                </p>
-                <p className="text-xs text-muted-foreground/50 mt-2 font-mono">
-                    System Version v2.6 (Cache Bust) • Last Updated: {new Date().toLocaleString()}
-                </p>
-            </footer>
         </>
     )
 }

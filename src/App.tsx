@@ -15,6 +15,8 @@ import HistoryPage from '@/pages/HistoryPage'
 import AdminPage from '@/pages/AdminPage'
 import NotFound from '@/pages/NotFound'
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
+import ApiDocsPage from '@/pages/ApiDocsPage'
+import ChatPage from '@/pages/ChatPage'
 
 function App() {
   const { theme, currentPage } = useAppStore()
@@ -46,6 +48,8 @@ function App() {
       case 'history': return <HistoryPage />
       case 'admin': return <AdminPage />
       case 'forgot-password': return <ForgotPasswordPage />
+      case 'api-docs': return <ApiDocsPage />
+      case 'chat': return <ChatPage />
       default: return <NotFound />
     }
   }
