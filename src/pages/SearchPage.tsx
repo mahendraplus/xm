@@ -30,7 +30,7 @@ const BASE_FEE = 1.0
 const SearchPage = () => {
     const { user, setUser } = useAuthStore()
     const { navigate } = useAppStore()
-    const { register, handleSubmit, formState: { errors } } = useForm()
+    const { register, handleSubmit, setValue, formState: { errors } } = useForm()
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState<any>(null)
     const [error, setError] = useState('')
@@ -48,6 +48,8 @@ const SearchPage = () => {
     const toggleAll = () => {
         setSelectedFields(allSelected ? [FIELD_OPTIONS[0].key] : FIELD_OPTIONS.map(f => f.key))
     }
+
+
 
     const estimatedCost = () => {
         const fieldTotal = selectedFields.reduce((sum, key) => {
@@ -68,12 +70,18 @@ const SearchPage = () => {
         try {
             const res = await apiClient.post('/api/user/search', { mobile: data.mobile, requested_fields })
 
-            if (res.data.status === 'no_results' || res.data.data === null) {
+            // API v2.1: data is now an array []
+            const responseData = res.data
+
+            if (responseData.status === 'no_results' || !responseData.data || (Array.isArray(responseData.data) && responseData.data.length === 0)) {
                 setNoResults(true)
-                toast.info('No record found for this mobile number', { description: `Charged: ₹${res.data.billing?.total_deducted?.toFixed(2)} (base fee only)` })
+                // Use optional chaining for billing
+                const charged = responseData.billing?.total_deducted?.toFixed(2) || '1.00'
+                toast.info('No record found for this mobile number', { description: `Charged: ₹${charged} (base fee only)` })
             } else {
-                setResult(res.data)
-                toast.success('Record found!', { description: `Charged: ₹${res.data.billing?.total_deducted?.toFixed(2)}` })
+                setResult(responseData)
+                const charged = responseData.billing?.total_deducted?.toFixed(2) || '0.00'
+                toast.success('Record found!', { description: `Charged: ₹${charged}` })
             }
 
             // Refresh balance
@@ -81,6 +89,7 @@ const SearchPage = () => {
                 apiClient.get('/api/user/profile').then(r => setUser(r.data)).catch(() => { })
             }
         } catch (err: any) {
+            console.error(err)
             const detail = err.response?.data?.detail || err.response?.data?.msg
             if (err.response?.status === 402) {
                 const m = 'Insufficient credits. Please top up your wallet.'
@@ -94,7 +103,8 @@ const SearchPage = () => {
         }
     }
 
-    const resultData = result?.data || {}
+    // Helper to treat data as array
+    const resultList = Array.isArray(result?.data) ? result?.data : (result?.data ? [result.data] : [])
     const billing = result?.billing || {}
 
     return (
@@ -160,27 +170,39 @@ const SearchPage = () => {
             </Card>
 
             {/* Search Form */}
-            <form onSubmit={handleSubmit(onSearch)}>
-                <div className="flex gap-3">
-                    <div className="flex-1">
+            <form onSubmit={handleSubmit(onSearch)} className="relative z-10">
+                <div className="flex gap-3 p-1 rounded-xl bg-card/30 backdrop-blur-sm border border-primary/20 shadow-[0_0_15px_-3px_rgba(var(--primary),0.3)] hover:shadow-[0_0_20px_-3px_rgba(var(--primary),0.5)] transition-shadow duration-300">
+                    <div className="flex-1 relative">
                         <Input
                             placeholder="Enter 10-digit mobile number..."
-                            className="h-12 text-lg"
+                            className="h-14 text-lg pr-28 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                             maxLength={10}
                             {...register('mobile', {
                                 required: true,
                                 pattern: /^[6-9]\d{9}$/
                             })}
                         />
+                        {/* Test Button inside input */}
+                        <button
+                            type="button"
+                            onClick={() => setValue('mobile', '9876543210')}
+                            className="absolute right-2 top-3 h-8 px-3 text-xs bg-primary/10 text-primary hover:bg-primary/20 rounded-md transition-colors font-medium"
+                        >
+                            Try Demo
+                        </button>
+
                         {errors.mobile && (
-                            <span className="text-destructive text-xs mt-1">Enter a valid 10-digit Indian mobile number</span>
+                            <span className="hidden">Enter a valid 10-digit Indian mobile number</span>
                         )}
                     </div>
-                    <Button type="submit" className="h-12 px-8 glow-primary" disabled={loading}>
+                    <Button type="submit" className="h-14 px-8 glow-primary rounded-lg text-base" disabled={loading}>
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5 mr-2" />}
                         {!loading && 'Search'}
                     </Button>
                 </div>
+                {errors.mobile && (
+                    <p className="text-destructive text-sm mt-2 ml-1">Please enter a valid 10-digit Indian mobile number.</p>
+                )}
             </form>
 
             {/* Error */}
@@ -210,16 +232,22 @@ const SearchPage = () => {
                     >
                         <Card className="glass border-yellow-500/20">
                             <CardContent className="flex flex-col items-center gap-4 py-10">
-                                <SearchX className="w-16 h-16 text-yellow-500 opacity-70" />
+                                <SearchX className="w-16 h-16 text-yellow-500" />
                                 <div className="text-center">
-                                    <h3 className="text-lg font-semibold">No Record Found</h3>
-                                    <p className="text-muted-foreground text-sm mt-1">
-                                        This number is not in our database. Only the base fee was charged.
+                                    <h3 className="text-lg font-semibold text-foreground">No Record Found</h3>
+                                    <p className="text-muted-foreground text-sm mt-1 max-w-sm mx-auto">
+                                        We could not find any data associated with this mobile number in our database.
                                     </p>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm bg-yellow-500/10 border border-yellow-500/20 px-4 py-2 rounded-lg">
-                                    <IndianRupee className="w-4 h-4 text-yellow-500" />
-                                    <span className="text-yellow-400">₹{BASE_FEE.toFixed(2)} base fee charged</span>
+                                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+                                    <div className="flex items-center gap-2 text-sm bg-yellow-500/10 border border-yellow-500/20 px-4 py-2 rounded-lg">
+                                        <IndianRupee className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
+                                        <span className="text-yellow-700 dark:text-yellow-400 font-medium">₹{BASE_FEE.toFixed(2)} base fee charged</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm bg-muted/50 border border-border px-3 py-2 rounded-lg">
+                                        <span className="text-muted-foreground text-xs uppercase tracking-wider font-semibold">Time:</span>
+                                        <span className="font-mono text-xs">{result?.response_time ? `${(result.response_time * 1000).toFixed(0)}ms` : 'N/A'}</span>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
@@ -229,25 +257,32 @@ const SearchPage = () => {
 
             {/* Results */}
             <AnimatePresence>
-                {result && result.data && (
+                {resultList.length > 0 && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="space-y-4"
+                        className="space-y-6"
                     >
                         {/* Billing Summary */}
                         <Card className="glass border-green-500/20">
-                            <CardContent className="p-4 flex flex-wrap gap-4 items-center">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <IndianRupee className="w-4 h-4 text-green-500" />
-                                    <span className="text-muted-foreground">Charged:</span>
-                                    <span className="font-bold text-green-400">₹{billing.total_deducted?.toFixed(2)}</span>
+                            <CardContent className="p-4 flex flex-wrap gap-4 items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <IndianRupee className="w-4 h-4 text-green-500" />
+                                        <span className="text-muted-foreground">Charged:</span>
+                                        <span className="font-bold text-green-400">₹{billing.total_deducted?.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-muted-foreground">Remaining:</span>
+                                        <span className="font-semibold">₹{result.wallet_remaining?.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-muted-foreground">Time:</span>
+                                        <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-foreground">{result.response_time ? `${(result.response_time * 1000).toFixed(0)}ms` : 'N/A'}</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <span className="text-muted-foreground">Remaining:</span>
-                                    <span className="font-semibold">₹{result.wallet_remaining?.toFixed(2)}</span>
-                                </div>
+
                                 {billing.field_charges && Object.keys(billing.field_charges).length > 0 && (
                                     <div className="flex flex-wrap gap-1">
                                         {Object.entries(billing.field_charges).map(([field, cost]) => (
@@ -260,30 +295,52 @@ const SearchPage = () => {
                             </CardContent>
                         </Card>
 
-                        {/* Data Fields Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {selectedFields.map(key => {
-                                const field = FIELD_OPTIONS.find(f => f.key === key)
-                                const value = resultData[key]
-                                if (!field || value === undefined || value === null || value === '') return null
-                                return (
-                                    <Card key={key} className="glass">
-                                        <CardContent className="p-4 flex items-center gap-3">
-                                            <div className="bg-primary/10 p-2 rounded-lg">
-                                                <field.icon className="w-4 h-4 text-primary" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-xs text-muted-foreground">{field.label}</p>
-                                                <p className="font-semibold text-sm truncate">{String(value)}</p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )
-                            })}
+                        {/* Result Items - Perfect ListView */}
+                        <div className="space-y-4">
+                            {resultList.map((item: any, idx: number) => (
+                                <Card key={`${item.id}-${idx}`} className="glass border-primary/20 overflow-hidden shadow-lg hover:shadow-primary/5 transition-shadow">
+                                    <div className="bg-primary/5 px-4 py-2 border-b border-primary/10 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary text-primary-foreground uppercase tracking-wider">Result #{idx + 1}</span>
+                                            {item.carrier && <span className="text-xs text-muted-foreground border border-border px-1.5 rounded">{item.carrier}</span>}
+                                            {item.circle && <span className="text-xs text-muted-foreground border border-border px-1.5 rounded">{item.circle}</span>}
+                                        </div>
+                                        <span className="text-sm font-bold text-primary font-mono tracking-wide">{item.mobile}</span>
+                                    </div>
+                                    <CardContent className="p-0">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border/50">
+                                            {selectedFields.map(key => {
+                                                if (['carrier', 'circle'].includes(key)) return null // Shown in header
+                                                const field = FIELD_OPTIONS.find(f => f.key === key)
+                                                const value = item[key]
+                                                if (!field || value === undefined || value === null || value === '') return null
+
+                                                const isWide = ['address'].includes(key)
+
+                                                return (
+                                                    <div key={key} className={cn("bg-background/40 p-3 flex items-start gap-3 hover:bg-background/60 transition-colors", isWide && "md:col-span-2 lg:col-span-3")}>
+                                                        <div className="bg-primary/10 p-1.5 rounded-md mt-0.5 shrink-0">
+                                                            <field.icon className="w-3.5 h-3.5 text-primary" />
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">{field.label}</p>
+                                                            <p className="text-sm font-medium break-words leading-snug">{String(value)}</p>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <div className="text-center text-[10px] text-muted-foreground/30 mt-8">
+                Search Module v2.6 (Cache Bust) • API Connected
+            </div>
         </div>
     )
 }

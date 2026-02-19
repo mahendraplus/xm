@@ -107,6 +107,10 @@ const SearchPage = () => {
     const resultList = Array.isArray(result?.data) ? result?.data : (result?.data ? [result.data] : [])
     const billing = result?.billing || {}
 
+    console.log('DEBUG: Search Result:', result)
+    console.log('DEBUG: Result List:', resultList)
+    console.log('DEBUG: Selected Fields:', selectedFields)
+
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
             <Helmet><title>Search | Go-Biz</title></Helmet>
@@ -264,6 +268,7 @@ const SearchPage = () => {
                         exit={{ opacity: 0 }}
                         className="space-y-6"
                     >
+                        <div className="bg-red-500/20 text-red-500 p-2 rounded">DEBUG: Found {resultList.length} items</div>
                         {/* Billing Summary */}
                         <Card className="glass border-green-500/20">
                             <CardContent className="p-4 flex flex-wrap gap-4 items-center justify-between">
@@ -298,7 +303,7 @@ const SearchPage = () => {
                         {/* Result Items - Perfect ListView */}
                         <div className="space-y-4">
                             {resultList.map((item: any, idx: number) => (
-                                <Card key={item.id || idx} className="glass border-primary/20 overflow-hidden shadow-lg hover:shadow-primary/5 transition-shadow">
+                                <Card key={`${item.id}-${idx}`} className="glass border-primary/20 overflow-hidden shadow-lg hover:shadow-primary/5 transition-shadow">
                                     <div className="bg-primary/5 px-4 py-2 border-b border-primary/10 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary text-primary-foreground uppercase tracking-wider">Result #{idx + 1}</span>
