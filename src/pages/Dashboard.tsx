@@ -63,8 +63,8 @@ const Dashboard = () => {
     const fetchPayments = async () => {
         setPayLoading(true)
         try {
-            const res = await apiClient.get('/api/user/payment-requests')
-            setPayments(res.data.requests || [])
+            const res = await apiClient.get('/api/payments/history')
+            setPayments(res.data.history || [])
         } catch { } finally { setPayLoading(false) }
     }
 

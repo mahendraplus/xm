@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import {
     Loader2, ShieldCheck, CreditCard, Users, KeyRound, BarChart3,
     CheckCircle, XCircle, DollarSign, Copy, RefreshCw, Eye, EyeOff,
-    Lock, Settings, Bell, IndianRupee, UserCheck, Tag
+    Lock, Settings, Bell, IndianRupee, UserCheck, Tag, Search, Wifi, Clock
 } from 'lucide-react'
 import apiClient from '@/api/client'
 import { Helmet } from 'react-helmet-async'
@@ -19,7 +19,22 @@ function generatePassword(len = 12) {
     return Array.from(crypto.getRandomValues(new Uint8Array(len))).map(b => chars[b % chars.length]).join('')
 }
 
-interface Stats { total_users: number; total_searches: number; pending_activations: number; pending_payments: number; pending_password_resets: number; total_revenue?: number }
+interface Stats {
+    total_users: number
+    total_searches: number
+    pending_activations: number
+    pending_payments: number
+    pending_password_resets: number
+    total_revenue?: number
+    system_health?: {
+        cpu_percent: number
+        memory: { percent: number; used_gb: number; total_gb: number }
+        disk: { percent: number; used_gb: number; total_gb: number }
+        network: { sent_mb: number; received_mb: number }
+        platform: string
+        uptime_seconds: number
+    }
+}
 interface PendingUser { email: string; name: string; created_at: string; credits: number; account_status: string }
 interface UserRecord { email: string; name: string; credits: number; searches: number; account_status: string; total_spent?: number }
 interface Deposit { id: string; user_id: string; amount: number; utr_number: string; screenshot_url?: string; created_at: string }
@@ -28,6 +43,7 @@ interface SystemSettings {
     auto_activate_users: boolean; welcome_credits: number; maintenance_mode: boolean;
     max_search_per_day: number; allow_api_key_access: boolean; search_log_full_mobile: boolean;
     min_deposit_amount: number; max_deposit_amount: number; max_login_attempts: number; block_duration_minutes: number;
+    razorpay_mode: 'test' | 'live';
 }
 interface FieldPrices { base_search_fee: number; fields: Record<string, number> }
 interface Notification { id: string; msg: string; created_at: string; read: boolean }
@@ -347,22 +363,83 @@ const AdminPage = () => {
             {/* ── STATS ── */}
             {activeTab === 'stats' && (
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {[
-                            { label: 'Total Users', val: stats?.total_users ?? '—', color: 'text-blue-400' },
-                            { label: 'Total Searches', val: stats?.total_searches ?? '—', color: 'text-purple-400' },
-                            { label: 'Pending Activation', val: stats?.pending_activations ?? '—', color: 'text-yellow-400' },
-                            { label: 'Pending Payments', val: stats?.pending_payments ?? '—', color: 'text-orange-400' },
-                            { label: 'Pending Resets', val: stats?.pending_password_resets ?? '—', color: 'text-red-400' },
+                            { label: 'Total Users', val: stats?.total_users ?? '—', icon: Users, color: 'text-blue-400' },
+                            { label: 'Total Searches', val: stats?.total_searches ?? '—', icon: Search, color: 'text-purple-400' },
+                            { label: 'Pending Pymts', val: stats?.pending_payments ?? '—', icon: IndianRupee, color: 'text-yellow-400' },
+                            { label: 'Pending Resets', val: stats?.pending_password_resets ?? '—', icon: KeyRound, color: 'text-red-400' },
                         ].map(s => (
-                            <Card key={s.label} className="glass"><CardContent className="p-4">
-                                <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-                                <p className={cn("text-2xl font-bold", s.color)}>{s.val}</p>
-                            </CardContent></Card>
+                            <Card key={s.label} className="glass border-primary/10 overflow-hidden relative group">
+                                <CardContent className="p-4 flex items-center gap-4">
+                                    <div className={cn("p-2 rounded-lg bg-white/5 group-hover:bg-white/10 transition-colors", s.color)}>
+                                        <s.icon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{s.label}</p>
+                                        <p className="text-xl font-bold">{s.val}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         ))}
                     </div>
-                    <Button variant="secondary" onClick={() => { fetchStats(); toast('Stats refreshed') }}>
-                        <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+
+                    {stats?.system_health && (
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-primary" /> Server Status & Health
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* CPU */}
+                                <Card className="glass border-primary/20 bg-primary/5">
+                                    <CardContent className="p-4 space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-medium">CPU Usage</span>
+                                            <span className="text-xs font-bold">{stats.system_health.cpu_percent}%</span>
+                                        </div>
+                                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                                            <div className="h-full bg-primary transition-all duration-500" style={{ width: `${stats.system_health.cpu_percent}%` }} />
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">{stats.system_health.platform} Server</p>
+                                    </CardContent>
+                                </Card>
+                                {/* Memory */}
+                                <Card className="glass border-purple-500/20 bg-purple-500/5">
+                                    <CardContent className="p-4 space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-medium">RAM Allocation</span>
+                                            <span className="text-xs font-bold">{stats.system_health.memory.percent}%</span>
+                                        </div>
+                                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                                            <div className="h-full bg-purple-500 transition-all duration-500" style={{ width: `${stats.system_health.memory.percent}%` }} />
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">{stats.system_health.memory.used_gb.toFixed(1)}GB / {stats.system_health.memory.total_gb.toFixed(1)}GB used</p>
+                                    </CardContent>
+                                </Card>
+                                {/* Disk */}
+                                <Card className="glass border-orange-500/20 bg-orange-500/5">
+                                    <CardContent className="p-4 space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-medium">Disk Usage</span>
+                                            <span className="text-xs font-bold">{stats.system_health.disk.percent}%</span>
+                                        </div>
+                                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                                            <div className="h-full bg-orange-500 transition-all duration-500" style={{ width: `${stats.system_health.disk.percent}%` }} />
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">{stats.system_health.disk.used_gb.toFixed(0)}GB / {stats.system_health.disk.total_gb.toFixed(0)}GB</p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                            <div className="flex flex-wrap gap-4 text-xs text-muted-foreground px-1">
+                                <div className="flex items-center gap-1.5"><Wifi className="w-3 h-3" /> Net Sent: {stats.system_health.network.sent_mb.toFixed(2)} MB</div>
+                                <div className="flex items-center gap-1.5"><Wifi className="w-3 h-3" /> Net Recv: {stats.system_health.network.received_mb.toFixed(2)} MB</div>
+                                <div className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> Uptime: {(stats.system_health.uptime_seconds / 3600).toFixed(1)} hours</div>
+                            </div>
+                        </div>
+                    )}
+
+                    <Button variant="secondary" size="sm" onClick={() => { fetchStats(); toast('Stats refreshed') }}>
+                        <RefreshCw className="w-4 h-4 mr-2" /> Refresh Dashboard
                     </Button>
                 </div>
             )}
@@ -755,6 +832,25 @@ const AdminPage = () => {
                                 </div>
                             ))}
 
+                            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10">
+                                <div>
+                                    <p className="text-sm font-medium">Razorpay Gateway Mode</p>
+                                    <p className="text-xs text-muted-foreground">Currently: {settingsDraft.razorpay_mode?.toUpperCase()}</p>
+                                </div>
+                                <div className="flex bg-muted rounded-md p-1">
+                                    {(['test', 'live'] as const).map(m => (
+                                        <button
+                                            key={m}
+                                            onClick={() => handleUpdateSettings({ razorpay_mode: m })}
+                                            className={cn("px-3 py-1 text-xs font-bold rounded uppercase transition-all",
+                                                settingsDraft.razorpay_mode === m ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                                        >
+                                            {m}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             {/* Numeric settings */}
                             <div className="grid grid-cols-2 gap-3">
                                 {([
@@ -783,8 +879,9 @@ const AdminPage = () => {
                         </CardContent>
                     </Card>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     )
 }
 

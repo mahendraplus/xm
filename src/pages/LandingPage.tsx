@@ -12,15 +12,14 @@ import { useAppStore } from '@/store/appStore'
 interface Stats {
     total_users: number
     total_searches: number
+    recent?: Array<{
+        created_at: string
+        mobile_mask: string
+        result_count: number
+        billing: { total_deducted: number }
+    }>
 }
-
-// Pricing Interface
-interface Pricing {
-    basic: number
-    address: number
-    full_kyc: number
-    deep: number
-}
+interface Pricing { basic: number; address: number; full_kyc: number; deep: number }
 
 const LandingPage = () => {
     const { navigate } = useAppStore()
@@ -147,33 +146,76 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* Features Grid */}
-            <section id="features" className="py-20">
-                <div className="text-center mb-16 space-y-4">
-                    <h2 className="text-3xl md:text-5xl font-bold">Why Choose Us</h2>
-                    <p className="text-muted-foreground">Built for developers, approved by enterprises.</p>
-                </div>
+            {/* Features & Activity Section */}
+            <section id="features" className="py-20 max-w-7xl mx-auto px-4">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                    {/* Live Activity (30%) */}
+                    <div className="lg:col-span-4 space-y-6">
+                        <div className="flex items-center gap-2">
+                            <Zap className="w-5 h-5 text-primary animate-pulse" />
+                            <h2 className="text-xl font-bold uppercase tracking-tight">Live Search Activity</h2>
+                        </div>
+                        <div className="space-y-3">
+                            {stats?.recent ? stats.recent.map((r, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    className="p-3 rounded-xl glass border-white/5 flex items-center justify-between text-xs"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                            <Search className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-white">{r.mobile_mask}</p>
+                                            <p className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleTimeString()}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-green-400 font-bold">{r.result_count} Matches</p>
+                                        <p className="text-[10px] text-muted-foreground">₹{r.billing.total_deducted.toFixed(0)} Charged</p>
+                                    </div>
+                                </motion.div>
+                            )) : (
+                                <div className="p-8 text-center glass rounded-xl text-muted-foreground text-sm">
+                                    Waiting for live activity...
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {features.map((feature, index) => (
-                        <motion.div
-                            key={feature.title}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: index * 0.1 }}
-                        >
-                            <Card className="h-full hover:bg-white/5 transition-colors border-white/5">
-                                <CardHeader>
-                                    <feature.icon className="w-10 h-10 text-primary mb-4" />
-                                    <CardTitle>{feature.title}</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-muted-foreground">{feature.description}</p>
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    ))}
+                    {/* Features (70%) */}
+                    <div className="lg:col-span-8">
+                        <div className="mb-8 space-y-4">
+                            <h2 className="text-3xl md:text-5xl font-bold">Built for Scale</h2>
+                            <p className="text-muted-foreground text-lg italic">Enterprise-grade security meets lightning-fast data intelligence.</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {features.map((feature, index) => (
+                                <motion.div
+                                    key={feature.title}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ delay: index * 0.1 }}
+                                >
+                                    <Card className="h-full hover:bg-white/5 transition-all border-white/10 group cursor-default">
+                                        <CardHeader>
+                                            <div className="p-3 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors w-fit">
+                                                <feature.icon className="w-6 h-6 text-primary" />
+                                            </div>
+                                            <CardTitle className="mt-4">{feature.title}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
+                                        </CardContent>
+                                    </Card>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </section>
 
