@@ -3,10 +3,10 @@ import { motion } from 'framer-motion'
 import { ArrowRight, Search, Database, Shield, Zap, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import apiClient from '@/api/client'
 import { cn } from '@/lib/utils'
+import { useAppStore } from '@/store/appStore'
 
 // Stats Interface
 interface Stats {
@@ -23,6 +23,7 @@ interface Pricing {
 }
 
 const LandingPage = () => {
+    const { navigate } = useAppStore()
     const [stats, setStats] = useState<Stats | null>(null)
     const [pricing, setPricing] = useState<Pricing | null>(null)
     const [loading, setLoading] = useState(true)
@@ -114,16 +115,12 @@ const LandingPage = () => {
                         transition={{ delay: 0.2 }}
                         className="flex flex-col sm:flex-row items-center justify-center gap-4"
                     >
-                        <Link to="/auth?mode=register">
-                            <Button size="lg" className="w-full sm:w-auto text-lg h-12 px-8 shadow-[0_0_30px_rgba(59,130,246,0.5)]">
-                                Start Free Trial <ArrowRight className="ml-2 w-5 h-5" />
-                            </Button>
-                        </Link>
-                        <Link to="/#pricing">
-                            <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg h-12 px-8">
-                                View Pricing
-                            </Button>
-                        </Link>
+                        <Button size="lg" className="w-full sm:w-auto text-lg h-12 px-8 glow-primary" onClick={() => navigate('auth')}>
+                            Start Free Trial <ArrowRight className="ml-2 w-5 h-5" />
+                        </Button>
+                        <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg h-12 px-8" onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
+                            View Pricing
+                        </Button>
                     </motion.div>
                 </div>
             </section>
@@ -217,11 +214,9 @@ const LandingPage = () => {
                                             <li className="flex items-center"><ArrowRight className="w-4 h-4 mr-2 text-primary" /> Instant Results</li>
                                             <li className="flex items-center"><ArrowRight className="w-4 h-4 mr-2 text-primary" /> Secure Access</li>
                                         </ul>
-                                        <Link to="/auth" className="block mt-8">
-                                            <Button className="w-full" variant={plan === 'full_kyc' ? 'default' : 'outline'}>
-                                                Get {plan.replace('_', ' ')}
-                                            </Button>
-                                        </Link>
+                                        <Button className="w-full mt-8" variant={plan === 'full_kyc' ? 'default' : 'outline'} onClick={() => navigate('auth')}>
+                                            Get {plan.replace('_', ' ')}
+                                        </Button>
                                     </CardContent>
                                 </Card>
                             </motion.div>

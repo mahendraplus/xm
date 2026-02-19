@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Search, Loader2, AlertTriangle, CheckCircle, User, Phone, Home, Mail, Hash, MapPin, Calendar, Users, Wifi, CreditCard } from 'lucide-react'
-import apiClient from '@/api/client'
-import { useAuthStore } from '@/store/authStore'
-import { Helmet } from 'react-helmet-async'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuthStore } from '@/store/authStore'
+import { useAppStore } from '@/store/appStore'
+import apiClient from '@/api/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Loader2, Search, User, Users, Home, Mail, Phone, Calendar, Wifi, MapPin, Hash, CheckSquare, Square, AlertCircle, SearchX, IndianRupee } from 'lucide-react'
+import { Helmet } from 'react-helmet-async'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
-// Available fields with labels, icons and prices (defaults from API doc)
 const FIELD_OPTIONS = [
     { key: 'name', label: 'Name', price: 5.0, icon: User },
     { key: 'fname', label: 'Father Name', price: 10.0, icon: Users },
@@ -23,249 +25,262 @@ const FIELD_OPTIONS = [
     { key: 'id', label: 'ID (Aadhaar)', price: 100.0, icon: Hash },
 ]
 
-const FIELD_ICONS: Record<string, any> = {
-    name: User, fname: Users, address: Home, email: Mail, alt: Phone,
-    dob: Calendar, gender: User, carrier: Wifi, circle: MapPin, id: Hash,
-}
-
-interface SearchData {
-    status: string
-    data: Record<string, any>
-    billing: {
-        base_fee: number
-        field_charges: Record<string, number>
-        total_deducted: number
-    }
-    wallet_remaining: number
-    response_time: number
-}
+const BASE_FEE = 1.0
 
 const SearchPage = () => {
     const { user, setUser } = useAuthStore()
-    const [loading, setLoading] = useState(false)
-    const [result, setResult] = useState<SearchData | null>(null)
-    const [searchError, setSearchError] = useState<any>(null)
-    const [selectedFields, setSelectedFields] = useState<string[]>(['name', 'fname', 'address', 'email', 'alt', 'id'])
-
+    const { navigate } = useAppStore()
     const { register, handleSubmit, formState: { errors } } = useForm()
+    const [loading, setLoading] = useState(false)
+    const [result, setResult] = useState<any>(null)
+    const [error, setError] = useState('')
+    const [selectedFields, setSelectedFields] = useState<string[]>(FIELD_OPTIONS.map(f => f.key))
+    const [noResults, setNoResults] = useState(false)
+
+    const allSelected = selectedFields.length === FIELD_OPTIONS.length
 
     const toggleField = (key: string) => {
         setSelectedFields(prev =>
-            prev.includes(key) ? prev.filter(f => f !== key) : [...prev, key]
+            prev.includes(key) ? (prev.length > 1 ? prev.filter(k => k !== key) : prev) : [...prev, key]
         )
     }
 
-    const selectAll = () => setSelectedFields(FIELD_OPTIONS.map(f => f.key))
-    const clearAll = () => setSelectedFields(['name']) // name is minimum
+    const toggleAll = () => {
+        setSelectedFields(allSelected ? [FIELD_OPTIONS[0].key] : FIELD_OPTIONS.map(f => f.key))
+    }
 
     const estimatedCost = () => {
-        return 1.0 + selectedFields.reduce((sum, key) => {
-            const f = FIELD_OPTIONS.find(f => f.key === key)
-            return sum + (f?.price ?? 0)
+        const fieldTotal = selectedFields.reduce((sum, key) => {
+            const f = FIELD_OPTIONS.find(o => o.key === key)
+            return sum + (f?.price || 0)
         }, 0)
+        return BASE_FEE + fieldTotal
     }
 
     const onSearch = async (data: any) => {
+        if (!user) { navigate('auth'); return }
         setLoading(true)
+        setError('')
         setResult(null)
-        setSearchError(null)
-
-        const requested_fields = selectedFields.length === FIELD_OPTIONS.length
-            ? ['ALL']
-            : selectedFields
+        setNoResults(false)
+        const requested_fields = allSelected ? ['ALL'] : selectedFields
 
         try {
-            const res = await apiClient.post('/api/user/search', {
-                mobile: data.mobile,
-                requested_fields,
-            })
+            const res = await apiClient.post('/api/user/search', { mobile: data.mobile, requested_fields })
 
-            setResult(res.data)
+            if (res.data.status === 'no_results' || res.data.data === null) {
+                setNoResults(true)
+                toast.info('No record found for this mobile number', { description: `Charged: ₹${res.data.billing?.total_deducted?.toFixed(2)} (base fee only)` })
+            } else {
+                setResult(res.data)
+                toast.success('Record found!', { description: `Charged: ₹${res.data.billing?.total_deducted?.toFixed(2)}` })
+            }
 
             // Refresh balance
             if (user) {
-                const profileRes = await apiClient.get('/api/user/profile')
-                setUser(profileRes.data)
+                apiClient.get('/api/user/profile').then(r => setUser(r.data)).catch(() => { })
             }
         } catch (err: any) {
-            console.error(err)
+            const detail = err.response?.data?.detail || err.response?.data?.msg
             if (err.response?.status === 402) {
-                setSearchError({ type: 'insufficient_funds', detail: err.response?.data?.detail })
+                const m = 'Insufficient credits. Please top up your wallet.'
+                setError(m); toast.error(m)
             } else {
-                setSearchError({
-                    type: 'general',
-                    message: err.response?.data?.detail || 'Search failed. Please try again.'
-                })
+                const m = typeof detail === 'string' ? detail : 'Search failed.'
+                setError(m); toast.error(m)
             }
         } finally {
             setLoading(false)
         }
     }
 
-    return (
-        <div className="max-w-4xl mx-auto space-y-8">
-            <Helmet>
-                <title>Search | Go-Biz</title>
-            </Helmet>
+    const resultData = result?.data || {}
+    const billing = result?.billing || {}
 
-            <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                    Deep Search
-                </h1>
-                <p className="text-muted-foreground">
-                    Select fields to retrieve. You only pay for data that's <strong className="text-white">actually found</strong>.
-                </p>
+    return (
+        <div className="space-y-8 max-w-4xl mx-auto">
+            <Helmet><title>Search | Go-Biz</title></Helmet>
+
+            <div>
+                <h1 className="text-3xl font-bold gradient-text">Mobile Data Search</h1>
+                <p className="text-muted-foreground mt-1">Lookup telecom & profile data by mobile number</p>
             </div>
 
-            <Card className="border-white/10 bg-black/40 backdrop-blur-xl">
-                <CardContent className="pt-6 space-y-6">
-                    {/* Mobile Input */}
-                    <div className="flex flex-col md:flex-row gap-4 items-start">
-                        <div className="flex-1 w-full space-y-2">
-                            <Input
-                                placeholder="Enter 10-digit mobile number"
-                                {...register('mobile', {
-                                    required: true,
-                                    pattern: /^[0-9]{10}$/
-                                })}
-                                className="h-12 text-lg"
-                            />
-                            {errors.mobile && <span className="text-red-400 text-sm">Please enter a valid 10-digit number</span>}
-                        </div>
-                        <Button size="lg" className="h-12" onClick={handleSubmit(onSearch)} disabled={loading || selectedFields.length === 0}>
-                            {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Search className="w-5 h-5 mr-2" />}
-                            Search
-                        </Button>
+            {/* Balance Banner */}
+            {user && (
+                <div className="flex items-center justify-between glass rounded-xl px-5 py-3">
+                    <div className="flex items-center gap-2 text-sm">
+                        <IndianRupee className="w-4 h-4 text-primary" />
+                        <span className="text-muted-foreground">Wallet Balance:</span>
+                        <span className="font-bold text-lg text-primary">₹{user.credits?.toFixed(2)}</span>
                     </div>
+                    <div className="text-sm text-muted-foreground">
+                        Est. cost: <span className="font-semibold text-foreground">₹{estimatedCost().toFixed(2)}</span>
+                    </div>
+                </div>
+            )}
 
-                    {/* Field Selector */}
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <p className="text-sm font-medium text-muted-foreground">Select Fields to Retrieve</p>
-                            <div className="flex gap-2">
-                                <Button variant="secondary" size="sm" onClick={selectAll}>All</Button>
-                                <Button variant="ghost" size="sm" onClick={clearAll}>Clear</Button>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                            {FIELD_OPTIONS.map(({ key, label, price, icon: Icon }) => {
-                                const active = selectedFields.includes(key)
-                                return (
-                                    <button
-                                        key={key}
-                                        type="button"
-                                        onClick={() => toggleField(key)}
-                                        className={`flex flex-col items-center gap-1 p-3 rounded-lg border text-xs transition-all cursor-pointer ${active
-                                                ? 'border-primary bg-primary/10 text-white'
-                                                : 'border-white/10 bg-white/5 text-muted-foreground hover:border-white/30'
-                                            }`}
-                                    >
-                                        <Icon className="w-4 h-4" />
-                                        <span className="font-medium">{label}</span>
-                                        <span className="text-[10px] opacity-70">₹{price}</span>
-                                    </button>
-                                )
-                            })}
-                        </div>
+            {/* Field Selector */}
+            <Card className="glass border-white/10">
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center justify-between">
+                        Select Data Fields
+                        <button onClick={toggleAll} className="flex items-center gap-1.5 text-sm font-normal text-primary hover:text-primary/80 transition-colors">
+                            {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                            {allSelected ? 'Deselect All' : 'Select All'}
+                        </button>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                        {FIELD_OPTIONS.map(f => {
+                            const selected = selectedFields.includes(f.key)
+                            return (
+                                <button
+                                    key={f.key}
+                                    onClick={() => toggleField(f.key)}
+                                    className={cn(
+                                        "flex flex-col items-center gap-1 p-3 rounded-xl border text-xs font-medium transition-all",
+                                        selected
+                                            ? "border-primary bg-primary/15 text-primary"
+                                            : "border-white/10 bg-white/3 text-muted-foreground hover:border-white/20"
+                                    )}
+                                >
+                                    <f.icon className="w-4 h-4" />
+                                    <span>{f.label}</span>
+                                    <span className="text-[10px] opacity-70">+₹{f.price.toFixed(0)}</span>
+                                </button>
+                            )
+                        })}
                     </div>
-
-                    {/* Estimated Cost */}
-                    <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-white/5 border border-white/10">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <CreditCard className="w-4 h-4" />
-                            Estimated cost (if all fields found)
-                        </div>
-                        <span className="font-bold text-white">₹{estimatedCost().toFixed(1)}</span>
-                    </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                        Base fee: ₹{BASE_FEE} + selected fields (charged only for found data)
+                    </p>
                 </CardContent>
             </Card>
 
-            {/* Error State */}
-            <AnimatePresence>
-                {searchError && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                    >
-                        {searchError.type === 'insufficient_funds' ? (
-                            <Card className="border-red-500/50 bg-red-500/10">
-                                <CardContent className="flex items-center p-6 text-red-200">
-                                    <AlertTriangle className="w-10 h-10 mr-4 text-red-500 shrink-0" />
-                                    <div>
-                                        <h4 className="font-bold text-lg">Insufficient Credits</h4>
-                                        <p>You have ₹{searchError.detail?.current} but this search needs ~₹{searchError.detail?.estimated_cost}.</p>
-                                        <p className="text-xs mt-1 opacity-70">Add credits via Dashboard → Add Credits.</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ) : (
-                            <Card className="border-red-500/50 bg-red-500/10">
-                                <CardContent className="p-6 text-red-200">{searchError.message}</CardContent>
-                            </Card>
+            {/* Search Form */}
+            <form onSubmit={handleSubmit(onSearch)}>
+                <div className="flex gap-3">
+                    <div className="flex-1">
+                        <Input
+                            placeholder="Enter 10-digit mobile number..."
+                            className="h-12 text-lg"
+                            maxLength={10}
+                            {...register('mobile', {
+                                required: true,
+                                pattern: /^[6-9]\d{9}$/
+                            })}
+                        />
+                        {errors.mobile && (
+                            <span className="text-destructive text-xs mt-1">Enter a valid 10-digit Indian mobile number</span>
                         )}
+                    </div>
+                    <Button type="submit" className="h-12 px-8 glow-primary" disabled={loading}>
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5 mr-2" />}
+                        {!loading && 'Search'}
+                    </Button>
+                </div>
+            </form>
+
+            {/* Error */}
+            {error && (
+                <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-3 p-4 rounded-xl bg-destructive/15 border border-destructive/40 text-destructive"
+                >
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <span>{error}</span>
+                    {error.includes('credit') && (
+                        <Button size="sm" variant="outline" className="ml-auto border-destructive/50" onClick={() => navigate('dashboard')}>
+                            Add Credits
+                        </Button>
+                    )}
+                </motion.div>
+            )}
+
+            {/* No Results */}
+            <AnimatePresence>
+                {noResults && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <Card className="glass border-yellow-500/20">
+                            <CardContent className="flex flex-col items-center gap-4 py-10">
+                                <SearchX className="w-16 h-16 text-yellow-500 opacity-70" />
+                                <div className="text-center">
+                                    <h3 className="text-lg font-semibold">No Record Found</h3>
+                                    <p className="text-muted-foreground text-sm mt-1">
+                                        This number is not in our database. Only the base fee was charged.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm bg-yellow-500/10 border border-yellow-500/20 px-4 py-2 rounded-lg">
+                                    <IndianRupee className="w-4 h-4 text-yellow-500" />
+                                    <span className="text-yellow-400">₹{BASE_FEE.toFixed(2)} base fee charged</span>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </motion.div>
                 )}
             </AnimatePresence>
 
             {/* Results */}
             <AnimatePresence>
-                {result && (
+                {result && result.data && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-4"
                     >
-                        <Card className="border-primary/30 bg-primary/5">
-                            <CardHeader>
-                                <CardTitle className="flex items-center text-primary">
-                                    <CheckCircle className="w-5 h-5 mr-2" />
-                                    Result Found  •  {result.response_time?.toFixed(3)}s
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
-                                {/* Data Fields */}
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    {Object.entries(result.data).filter(([, v]) => v !== null).map(([key, value]) => {
-                                        const Icon = FIELD_ICONS[key] || Hash
-                                        const label = FIELD_OPTIONS.find(f => f.key === key)?.label || key
-                                        return (
-                                            <div key={key} className={`flex items-center space-x-4 p-4 rounded-lg bg-black/20 ${key === 'address' ? 'md:col-span-2' : ''}`}>
-                                                <div className="bg-primary/20 p-3 rounded-full shrink-0">
-                                                    <Icon className="w-5 h-5 text-primary" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
-                                                    <p className="font-bold break-words">{String(value)}</p>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
+                        {/* Billing Summary */}
+                        <Card className="glass border-green-500/20">
+                            <CardContent className="p-4 flex flex-wrap gap-4 items-center">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <IndianRupee className="w-4 h-4 text-green-500" />
+                                    <span className="text-muted-foreground">Charged:</span>
+                                    <span className="font-bold text-green-400">₹{billing.total_deducted?.toFixed(2)}</span>
                                 </div>
-
-                                {/* Billing Breakdown */}
-                                <div className="rounded-lg border border-white/10 bg-black/20 p-4 space-y-2">
-                                    <p className="text-sm font-semibold text-muted-foreground">💳 Billing Breakdown</p>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Base fee</span>
-                                        <span>₹{result.billing?.base_fee}</span>
-                                    </div>
-                                    {Object.entries(result.billing?.field_charges || {}).map(([k, v]) => (
-                                        <div key={k} className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground capitalize">{k}</span>
-                                            <span>₹{v}</span>
-                                        </div>
-                                    ))}
-                                    <div className="border-t border-white/10 pt-2 flex justify-between font-bold">
-                                        <span>Total Deducted</span>
-                                        <span className="text-red-400">-₹{result.billing?.total_deducted}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-muted-foreground">Wallet remaining</span>
-                                        <span className="text-green-400">₹{result.wallet_remaining}</span>
-                                    </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-muted-foreground">Remaining:</span>
+                                    <span className="font-semibold">₹{result.wallet_remaining?.toFixed(2)}</span>
                                 </div>
+                                {billing.field_charges && Object.keys(billing.field_charges).length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                        {Object.entries(billing.field_charges).map(([field, cost]) => (
+                                            <span key={field} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                                {field}: ₹{String(cost)}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
+
+                        {/* Data Fields Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {selectedFields.map(key => {
+                                const field = FIELD_OPTIONS.find(f => f.key === key)
+                                const value = resultData[key]
+                                if (!field || value === undefined || value === null || value === '') return null
+                                return (
+                                    <Card key={key} className="glass">
+                                        <CardContent className="p-4 flex items-center gap-3">
+                                            <div className="bg-primary/10 p-2 rounded-lg">
+                                                <field.icon className="w-4 h-4 text-primary" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-xs text-muted-foreground">{field.label}</p>
+                                                <p className="font-semibold text-sm truncate">{String(value)}</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                )
+                            })}
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

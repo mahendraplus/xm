@@ -1,435 +1,464 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Loader2, ShieldCheck, CreditCard, Users, KeyRound, BarChart3, CheckCircle, XCircle, DollarSign } from 'lucide-react'
+import { Loader2, ShieldCheck, CreditCard, Users, KeyRound, BarChart3, CheckCircle, XCircle, DollarSign, Copy, RefreshCw, Eye, EyeOff, Lock } from 'lucide-react'
 import apiClient from '@/api/client'
 import { Helmet } from 'react-helmet-async'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
-interface UserData {
-    email: string
-    name: string
-    account_status: string
-    credits: number
-    total_spent?: number
+const ADMIN_NOTIFY_EMAIL = 'mahendrakumargahelot@gmail.com'
+
+function generatePassword(len = 12) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%'
+    return Array.from(crypto.getRandomValues(new Uint8Array(len))).map(b => chars[b % chars.length]).join('')
 }
 
-interface AdminStats {
-    total_users: number
-    total_searches: number
-    pending_activations: number
-    pending_payments: number
-    pending_password_resets: number
-}
-
-interface DepositRequest {
-    id: string
-    user_id: string
-    amount: number
-    utr_number: string
-    status: string
-}
-
-interface PasswordResetRequest {
-    id: string
-    email: string
-    note: string
-    status: string
-}
+interface Stats { total_users: number; active_users: number; total_searches: number; total_revenue: number }
+interface PendingUser { email: string; name: string; created_at: string }
+interface UserRecord { email: string; name: string; credits: number; searches: number; account_status: string }
+interface Deposit { id: string; email: string; amount: number; utr_number: string; screenshot_url?: string; created_at: string }
+interface ResetReq { id: string; email: string; note: string; created_at: string; status: string }
 
 const AdminPage = () => {
-    const [adminToken, setAdminToken] = useState('')
-    const [isLoggedIn, setIsLoggedIn] = useState(false)
-    const [loading, setLoading] = useState(false)
-    const [msg, setMsg] = useState('')
-
-    // Feature Tabs
+    const [adminToken, setAdminToken] = useState(localStorage.getItem('admin_token') || '')
+    const [adminPwd, setAdminPwd] = useState('')
+    const [showPwd, setShowPwd] = useState(false)
+    const [loginLoading, setLoginLoading] = useState(false)
+    const [loginError, setLoginError] = useState('')
     const [activeTab, setActiveTab] = useState('stats')
 
-    // State for each tab
-    const [stats, setStats] = useState<AdminStats | null>(null)
-    const [users, setUsers] = useState<UserData[]>([])
-    const [pendingUsers, setPendingUsers] = useState<UserData[]>([])
-    const [deposits, setDeposits] = useState<DepositRequest[]>([])
-    const [resetRequests, setResetRequests] = useState<PasswordResetRequest[]>([])
+    const [stats, setStats] = useState<Stats | null>(null)
+    const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([])
+    const [users, setUsers] = useState<UserRecord[]>([])
+    const [deposits, setDeposits] = useState<Deposit[]>([])
+    const [resets, setResets] = useState<ResetReq[]>([])
 
-    // Credits form
     const [creditEmail, setCreditEmail] = useState('')
     const [creditAmount, setCreditAmount] = useState('')
     const [creditReason, setCreditReason] = useState('')
+    const [creditOp, setCreditOp] = useState<'add' | 'deduct'>('add')
 
-    // Password reset resolve form
-    const [resetTempPass, setResetTempPass] = useState('')
-    const [selectedResetId, setSelectedResetId] = useState('')
+    const [loading, setLoading] = useState(false)
+    const [genPasswords, setGenPasswords] = useState<Record<string, string>>({})
+    const [showGenPass, setShowGenPass] = useState<Record<string, boolean>>({})
 
+    const isLoggedIn = !!adminToken
     const authHeader = { headers: { 'Authorization': `Bearer ${adminToken}` } }
 
-    const handleLogin = async (e: any) => {
-        e.preventDefault()
-        setLoading(true)
+    const handleAdminLogin = async () => {
+        setLoginLoading(true); setLoginError('')
         try {
-            const password = e.target.password.value
-            const res = await apiClient.post('/api/auth/admin-login', { password })
-            const token = res.data.token || password
-            setAdminToken(token)
-            setIsLoggedIn(true)
-            fetchStats(token)
-        } catch (err: any) {
-            setMsg('Admin Login Failed: ' + (err.response?.data?.detail || 'wrong password'))
+            const res = await apiClient.post('/api/admin/login', { password: adminPwd })
+            const tok = res.data.token || res.data.access_token
+            setAdminToken(tok)
+            localStorage.setItem('admin_token', tok)
+            toast.success('Admin login successful!')
+        } catch (e: any) {
+            const m = e.response?.data?.detail || 'Login failed'
+            setLoginError(m); toast.error(m)
         } finally {
-            setLoading(false)
+            setLoginLoading(false)
         }
     }
 
-    const fetchStats = async (token?: string) => {
-        const t = token || adminToken
-        try {
-            const res = await apiClient.get('/api/admin/stats', { headers: { 'Authorization': `Bearer ${t}` } })
-            setStats(res.data)
-        } catch (e) { console.error(e) }
-    }
+    const fetchStats = useCallback(async () => {
+        try { const r = await apiClient.get('/api/admin/stats', authHeader); setStats(r.data) } catch { }
+    }, [adminToken])
 
-    const fetchUsers = async () => {
-        setLoading(true)
-        try {
-            const res = await apiClient.get('/api/admin/users', authHeader)
-            setUsers(res.data.users || [])
-        } catch (e) { console.error(e) } finally { setLoading(false) }
-    }
+    const fetchPending = useCallback(async () => {
+        try { const r = await apiClient.get('/api/admin/users/pending', authHeader); setPendingUsers(r.data.users || r.data || []) } catch { }
+    }, [adminToken])
 
-    const fetchPendingUsers = async () => {
-        setLoading(true)
-        try {
-            const res = await apiClient.get('/api/admin/users/pending', authHeader)
-            setPendingUsers(res.data.pending_users || [])
-        } catch (e) { console.error(e) } finally { setLoading(false) }
-    }
+    const fetchUsers = useCallback(async () => {
+        try { const r = await apiClient.get('/api/admin/users', authHeader); setUsers(r.data.users || r.data || []) } catch { }
+    }, [adminToken])
+
+    const fetchDeposits = useCallback(async () => {
+        try { const r = await apiClient.get('/api/admin/finance/pending-deposits', authHeader); setDeposits(r.data.deposits || r.data || []) } catch { }
+    }, [adminToken])
+
+    const fetchResets = useCallback(async () => {
+        try { const r = await apiClient.get('/api/admin/requests/password-resets', authHeader); setResets(r.data.requests || r.data || []) } catch { }
+    }, [adminToken])
+
+    useEffect(() => {
+        if (!isLoggedIn) return
+        fetchStats(); fetchPending(); fetchUsers(); fetchDeposits(); fetchResets()
+    }, [isLoggedIn])
 
     const activateUser = async (email: string) => {
-        try {
-            await apiClient.post(`/api/admin/users/${email}/activate`, {}, authHeader)
-            fetchPendingUsers()
-            setMsg(`✓ ${email} activated`)
-        } catch (e: any) { setMsg('Failed: ' + e.response?.data?.detail) }
+        try { await apiClient.post(`/api/admin/users/${email}/activate`, {}, authHeader); toast.success(`Activated ${email}`); fetchPending(); fetchUsers() } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
     }
-
     const deactivateUser = async (email: string) => {
-        try {
-            await apiClient.post(`/api/admin/users/${email}/deactivate`, {}, authHeader)
-            fetchUsers()
-            setMsg(`✓ ${email} deactivated`)
-        } catch (e: any) { setMsg('Failed: ' + e.response?.data?.detail) }
+        try { await apiClient.post(`/api/admin/users/${email}/deactivate`, {}, authHeader); toast.success(`Deactivated ${email}`); fetchUsers() } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
     }
 
-    const handleAddCredits = async (e: any) => {
+    const handleAddCredits = async (e: React.FormEvent) => {
         e.preventDefault()
+        const amt = parseFloat(creditAmount)
+        if (!amt || amt <= 0) { toast.error('Amount must be > 0'); return }
         setLoading(true)
-        setMsg('')
         try {
-            const res = await apiClient.post(
-                `/api/admin/users/${creditEmail}/credits/add`,
-                { amount: parseFloat(creditAmount), reason: creditReason || 'Admin manual credit' },
-                authHeader
-            )
-            setMsg(res.data.msg || 'Credits added')
+            const endpoint = creditOp === 'add' ? 'add' : 'deduct'
+            await apiClient.post(`/api/admin/users/${creditEmail}/credits/${endpoint}`, { amount: amt, reason: creditReason }, authHeader)
+            toast.success(`Credits ${creditOp === 'add' ? 'added' : 'deducted'} for ${creditEmail}`)
             setCreditEmail(''); setCreditAmount(''); setCreditReason('')
-        } catch (err: any) {
-            setMsg(err.response?.data?.detail || 'Failed')
-        } finally { setLoading(false) }
-    }
-
-    const fetchDeposits = async () => {
-        setLoading(true)
-        try {
-            const res = await apiClient.get('/api/admin/finance/pending-deposits', authHeader)
-            setDeposits(res.data.pending_deposits || [])
-        } catch (e) { console.error(e) } finally { setLoading(false) }
+            fetchUsers()
+        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') } finally { setLoading(false) }
     }
 
     const handleDeposit = async (id: string, action: 'CREDIT' | 'REJECT', amount?: number) => {
         try {
-            await apiClient.post(
-                `/api/admin/finance/deposits/${id}/approve`,
+            await apiClient.post(`/api/admin/finance/deposits/${id}/approve`,
                 action === 'CREDIT' ? { action: 'CREDIT', amount } : { action: 'REJECT' },
-                authHeader
-            )
+                authHeader)
+            toast.success(`Deposit ${action === 'CREDIT' ? 'approved' : 'rejected'}`)
             fetchDeposits()
-            setMsg(`Deposit ${action === 'CREDIT' ? 'approved' : 'rejected'}`)
-        } catch (e: any) { setMsg('Failed: ' + e.response?.data?.detail) }
+        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
     }
 
-    const fetchResetRequests = async () => {
-        setLoading(true)
+    const generateAndResolve = async (req: ResetReq) => {
+        const newPass = generatePassword(12)
+        setGenPasswords(p => ({ ...p, [req.id]: newPass }))
+        setShowGenPass(p => ({ ...p, [req.id]: true }))
         try {
-            const res = await apiClient.get('/api/admin/requests/password-resets', authHeader)
-            setResetRequests(res.data.requests || [])
-        } catch (e) { console.error(e) } finally { setLoading(false) }
-    }
-
-    const resolveReset = async (id: string) => {
-        if (!resetTempPass) return
-        try {
-            await apiClient.post(
-                `/api/admin/requests/password-resets/${id}/resolve`,
-                { new_temp_password: resetTempPass },
-                authHeader
-            )
-            setMsg('Password reset resolved. Send temp password to user manually.')
-            fetchResetRequests()
-            setResetTempPass(''); setSelectedResetId('')
-        } catch (e: any) { setMsg('Failed: ' + e.response?.data?.detail) }
+            await apiClient.post(`/api/admin/requests/password-resets/${req.id}/resolve`,
+                { new_password: newPass }, authHeader)
+            toast.success(`Password set for ${req.email} — copy and send it!`)
+            fetchResets()
+        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
     }
 
     const rejectReset = async (id: string) => {
         try {
             await apiClient.post(`/api/admin/requests/password-resets/${id}/reject`, {}, authHeader)
-            fetchResetRequests()
-            setMsg('Reset request rejected')
-        } catch (e: any) { setMsg('Failed') }
+            toast.success('Reset request rejected')
+            fetchResets()
+        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+    }
+
+    const copyPass = (pass: string, email: string) => {
+        navigator.clipboard.writeText(pass)
+        toast.success(`Password copied! Send to ${email}`)
+    }
+
+    const adminLogout = () => {
+        setAdminToken('')
+        localStorage.removeItem('admin_token')
+        toast.info('Admin logged out')
     }
 
     const tabs = [
         { key: 'stats', label: 'Stats', icon: BarChart3 },
-        { key: 'activate', label: 'Activate', icon: CheckCircle },
+        { key: 'activate', label: `Activate (${pendingUsers.length})`, icon: CheckCircle },
         { key: 'users', label: 'Users', icon: Users },
         { key: 'credits', label: 'Credits', icon: CreditCard },
-        { key: 'deposits', label: 'Deposits', icon: DollarSign },
-        { key: 'resets', label: 'Resets', icon: KeyRound },
+        { key: 'deposits', label: `Deposits (${deposits.length})`, icon: DollarSign },
+        { key: 'resets', label: `Resets (${resets.length})`, icon: KeyRound },
     ]
 
-    const switchTab = (key: string) => {
-        setActiveTab(key)
-        setMsg('')
-        if (key === 'stats') fetchStats()
-        else if (key === 'activate') fetchPendingUsers()
-        else if (key === 'users') fetchUsers()
-        else if (key === 'deposits') fetchDeposits()
-        else if (key === 'resets') fetchResetRequests()
+    if (!isLoggedIn) {
+        return (
+            <div className="flex items-center justify-center min-h-[80vh]">
+                <Helmet><title>Admin | Go-Biz</title></Helmet>
+                <div className="w-full max-w-sm">
+                    <Card className="glass border-primary/20">
+                        <CardHeader className="text-center">
+                            <ShieldCheck className="w-12 h-12 mx-auto text-primary mb-2" />
+                            <CardTitle>Admin Panel</CardTitle>
+                            <CardDescription>Enter admin password to continue</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="relative">
+                                <Input
+                                    type={showPwd ? 'text' : 'password'}
+                                    placeholder="Admin Password"
+                                    value={adminPwd}
+                                    onChange={e => setAdminPwd(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleAdminLogin()}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPwd(!showPwd)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                    {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                            {loginError && <p className="text-destructive text-sm text-center">{loginError}</p>}
+                            <Button className="w-full glow-primary" onClick={handleAdminLogin} disabled={loginLoading}>
+                                {loginLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Lock className="w-4 h-4 mr-2" />}
+                                Login
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        )
     }
 
     return (
-        <div className="max-w-5xl mx-auto py-10 space-y-8 px-4">
-            <Helmet><title>Admin | Go-Biz</title></Helmet>
-
-            <div className="text-center">
-                <ShieldCheck className="w-12 h-12 mx-auto text-red-500 mb-4" />
-                <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <div className="space-y-6">
+            <Helmet><title>Admin Panel | Go-Biz</title></Helmet>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <ShieldCheck className="w-8 h-8 text-primary" />
+                    <div>
+                        <h1 className="text-2xl font-bold gradient-text">Admin Panel</h1>
+                        <p className="text-xs text-muted-foreground">Notifications → {ADMIN_NOTIFY_EMAIL}</p>
+                    </div>
+                </div>
+                <Button variant="destructive" size="sm" onClick={adminLogout}>Logout</Button>
             </div>
 
-            {!isLoggedIn ? (
-                <Card className="max-w-md mx-auto border-red-500/20 bg-black/40 backdrop-blur-xl">
-                    <CardHeader>
-                        <CardTitle>Admin Access</CardTitle>
-                        <CardDescription>Enter admin password to continue</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleLogin} className="space-y-4">
-                            <Input name="password" type="password" placeholder="Admin Password" required />
-                            <Button type="submit" className="w-full bg-red-600 hover:bg-red-700" disabled={loading}>
-                                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Login
-                            </Button>
-                        </form>
-                        {msg && <p className="text-center text-red-400 mt-4">{msg}</p>}
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="space-y-6">
-                    {/* Tab Navigation */}
-                    <div className="flex flex-wrap justify-center gap-2">
-                        {tabs.map(({ key, label, icon: Icon }) => (
-                            <Button
-                                key={key}
-                                size="sm"
-                                variant={activeTab === key ? 'default' : 'secondary'}
-                                onClick={() => switchTab(key)}
-                            >
-                                <Icon className="w-3 h-3 mr-1" /> {label}
-                            </Button>
+            {/* Tabs */}
+            <div className="flex gap-2 flex-wrap">
+                {tabs.map(t => (
+                    <button
+                        key={t.key}
+                        onClick={() => setActiveTab(t.key)}
+                        className={cn(
+                            "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                            activeTab === t.key ? "bg-primary text-primary-foreground shadow-md" : "glass hover:bg-white/10 text-muted-foreground"
+                        )}
+                    >
+                        <t.icon className="w-4 h-4" /> {t.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Stats */}
+            {activeTab === 'stats' && (
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                            { label: 'Total Users', val: stats?.total_users ?? '—', icon: Users, color: 'text-blue-400' },
+                            { label: 'Active Users', val: stats?.active_users ?? '—', icon: CheckCircle, color: 'text-green-400' },
+                            { label: 'Total Searches', val: stats?.total_searches ?? '—', icon: BarChart3, color: 'text-purple-400' },
+                            { label: 'Revenue', val: stats?.total_revenue != null ? `₹${stats.total_revenue.toFixed(2)}` : '—', icon: DollarSign, color: 'text-yellow-400' },
+                        ].map(s => (
+                            <Card key={s.label} className="glass">
+                                <CardContent className="p-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-xs text-muted-foreground">{s.label}</span>
+                                        <s.icon className={cn("w-4 h-4", s.color)} />
+                                    </div>
+                                    <div className="text-2xl font-bold">{s.val}</div>
+                                </CardContent>
+                            </Card>
                         ))}
                     </div>
+                    <Button variant="secondary" onClick={() => { fetchStats(); toast('Stats refreshed') }}>
+                        <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+                    </Button>
+                </div>
+            )}
 
-                    {msg && (
-                        <p className="text-center bg-white/5 border border-white/10 rounded p-2 text-sm">{msg}</p>
-                    )}
-
-                    {/* Stats Tab */}
-                    {activeTab === 'stats' && stats && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {[
-                                { label: 'Total Users', value: stats.total_users },
-                                { label: 'Total Searches', value: stats.total_searches },
-                                { label: 'Pending Activations', value: stats.pending_activations, warn: true },
-                                { label: 'Pending Payments', value: stats.pending_payments, warn: true },
-                                { label: 'Pending Resets', value: stats.pending_password_resets, warn: true },
-                            ].map(({ label, value, warn }) => (
-                                <Card key={label} className={`text-center ${warn && value > 0 ? 'border-yellow-500/40' : 'border-white/10'} bg-black/40`}>
-                                    <CardContent className="pt-6">
-                                        <p className={`text-3xl font-bold ${warn && value > 0 ? 'text-yellow-400' : 'text-white'}`}>{value}</p>
-                                        <p className="text-xs text-muted-foreground mt-1">{label}</p>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Activate Pending Users */}
-                    {activeTab === 'activate' && (
-                        <Card className="border-yellow-500/20 bg-black/40 backdrop-blur-xl">
-                            <CardHeader>
-                                <CardTitle>Pending Activations ({pendingUsers.length})</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {loading ? <Loader2 className="mx-auto animate-spin" /> :
-                                    pendingUsers.length === 0 ? <p className="text-center text-muted-foreground">No pending users.</p> : (
-                                        <div className="space-y-2">
-                                            {pendingUsers.map((u, i) => (
-                                                <div key={i} className="flex items-center justify-between p-3 rounded bg-white/5">
-                                                    <div>
-                                                        <p className="font-bold">{u.email}</p>
-                                                        <p className="text-xs text-muted-foreground">{u.name}</p>
-                                                    </div>
-                                                    <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => activateUser(u.email)}>
-                                                        Activate
-                                                    </Button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+            {/* Activate */}
+            {activeTab === 'activate' && (
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h2 className="font-semibold">Pending Activation ({pendingUsers.length})</h2>
+                        <Button size="sm" variant="secondary" onClick={fetchPending}><RefreshCw className="w-4 h-4" /></Button>
+                    </div>
+                    {pendingUsers.length === 0 ? (
+                        <div className="glass rounded-xl p-8 text-center text-muted-foreground">No pending users 🎉</div>
+                    ) : pendingUsers.map(u => (
+                        <Card key={u.email} className="glass">
+                            <CardContent className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                <div>
+                                    <p className="font-medium">{u.name}</p>
+                                    <p className="text-xs text-muted-foreground">{u.email}</p>
+                                    <p className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleString()}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => activateUser(u.email)}>
+                                        <CheckCircle className="w-4 h-4 mr-1" /> Activate
+                                    </Button>
+                                    <Button size="sm" variant="destructive" onClick={() => deactivateUser(u.email)}>
+                                        <XCircle className="w-4 h-4 mr-1" /> Reject
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
-                    )}
+                    ))}
+                </div>
+            )}
 
-                    {/* All Users */}
-                    {activeTab === 'users' && (
-                        <Card className="border-white/10 bg-black/40 backdrop-blur-xl">
-                            <CardHeader>
-                                <CardTitle>All Users ({users.length})</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {loading ? <Loader2 className="mx-auto animate-spin" /> : (
-                                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                                        {users.map((u, i) => (
-                                            <div key={i} className="flex items-center justify-between p-3 rounded bg-white/5">
-                                                <div>
-                                                    <p className="font-bold text-sm">{u.email}</p>
-                                                    <p className="text-xs text-muted-foreground">{u.name} • ₹{u.credits} • {u.account_status}</p>
-                                                </div>
-                                                <Button size="sm" variant={u.account_status === 'ACTIVE' ? 'destructive' : 'default'}
-                                                    onClick={() => u.account_status === 'ACTIVE' ? deactivateUser(u.email) : activateUser(u.email)}>
-                                                    {u.account_status === 'ACTIVE' ? 'Ban' : 'Activate'}
-                                                </Button>
+            {/* User Management */}
+            {activeTab === 'users' && (
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h2 className="font-semibold">All Users ({users.length})</h2>
+                        <Button size="sm" variant="secondary" onClick={fetchUsers}><RefreshCw className="w-4 h-4" /></Button>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl glass">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-white/10">
+                                    {['Name', 'Email', 'Credits', 'Searches', 'Status', 'Actions'].map(h => (
+                                        <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users.map(u => (
+                                    <tr key={u.email} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                                        <td className="px-4 py-3 font-medium">{u.name}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
+                                        <td className="px-4 py-3">₹{u.credits?.toFixed(2)}</td>
+                                        <td className="px-4 py-3">{u.searches}</td>
+                                        <td className="px-4 py-3">
+                                            <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium",
+                                                u.account_status === 'ACTIVE' ? 'bg-green-500/20 text-green-400' :
+                                                    u.account_status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                        'bg-red-500/20 text-red-400')}>
+                                                {u.account_status}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex gap-1">
+                                                {u.account_status !== 'ACTIVE' && (
+                                                    <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700" onClick={() => activateUser(u.email)}>Activate</Button>
+                                                )}
+                                                {u.account_status === 'ACTIVE' && (
+                                                    <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => deactivateUser(u.email)}>Ban</Button>
+                                                )}
                                             </div>
-                                        ))}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {users.length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground">No users found</div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Credits */}
+            {activeTab === 'credits' && (
+                <div className="max-w-md">
+                    <Card className="glass">
+                        <CardHeader>
+                            <CardTitle>Manage Credits</CardTitle>
+                            <CardDescription>Add or deduct credits from any user</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleAddCredits} className="space-y-4">
+                                <Input placeholder="User Email" value={creditEmail} onChange={e => setCreditEmail(e.target.value)} required />
+                                <Input placeholder="Amount (must be > 0)" type="number" min="0.01" step="0.01" value={creditAmount} onChange={e => setCreditAmount(e.target.value)} required />
+                                <Input placeholder="Reason (e.g. UPI payment verified)" value={creditReason} onChange={e => setCreditReason(e.target.value)} />
+                                <div className="flex gap-2">
+                                    <Button type="button" variant={creditOp === 'add' ? 'default' : 'outline'} className="flex-1" onClick={() => setCreditOp('add')}>+ Add</Button>
+                                    <Button type="button" variant={creditOp === 'deduct' ? 'destructive' : 'outline'} className="flex-1" onClick={() => setCreditOp('deduct')}>- Deduct</Button>
+                                </div>
+                                <Button type="submit" className={cn("w-full", creditOp === 'add' ? 'bg-green-600 hover:bg-green-700' : '')} variant={creditOp === 'deduct' ? 'destructive' : 'default'} disabled={loading}>
+                                    {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                    {creditOp === 'add' ? 'Add Credits' : 'Deduct Credits'}
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Deposits */}
+            {activeTab === 'deposits' && (
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h2 className="font-semibold">Pending Deposits ({deposits.length})</h2>
+                        <Button size="sm" variant="secondary" onClick={fetchDeposits}><RefreshCw className="w-4 h-4" /></Button>
+                    </div>
+                    {deposits.length === 0 ? (
+                        <div className="glass rounded-xl p-8 text-center text-muted-foreground">No pending deposits 🎉</div>
+                    ) : deposits.map(d => (
+                        <Card key={d.id} className="glass">
+                            <CardContent className="p-4 space-y-3">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-medium">{d.email}</p>
+                                        <p className="text-xs text-muted-foreground">UTR: {d.utr_number}</p>
+                                        <p className="text-xs text-muted-foreground">{new Date(d.created_at).toLocaleString()}</p>
+                                    </div>
+                                    <p className="text-xl font-bold text-green-400">₹{d.amount}</p>
+                                </div>
+                                {d.screenshot_url && <a href={d.screenshot_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">View Screenshot</a>}
+                                <div className="flex gap-2">
+                                    <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700" onClick={() => handleDeposit(d.id, 'CREDIT', d.amount)}>
+                                        <CheckCircle className="w-4 h-4 mr-1" /> Approve (₹{d.amount})
+                                    </Button>
+                                    <Button size="sm" variant="destructive" className="flex-1" onClick={() => handleDeposit(d.id, 'REJECT')}>
+                                        <XCircle className="w-4 h-4 mr-1" /> Reject
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            {/* Password Resets */}
+            {activeTab === 'resets' && (
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h2 className="font-semibold">Password Reset Requests ({resets.length})</h2>
+                        <Button size="sm" variant="secondary" onClick={fetchResets}><RefreshCw className="w-4 h-4" /></Button>
+                    </div>
+                    {resets.length === 0 ? (
+                        <div className="glass rounded-xl p-8 text-center text-muted-foreground">No reset requests 🎉</div>
+                    ) : resets.map(r => (
+                        <Card key={r.id} className={cn("glass", r.status === 'resolved' ? 'opacity-60' : '')}>
+                            <CardContent className="p-4 space-y-3">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-medium">{r.email}</p>
+                                        <p className="text-xs text-muted-foreground">Note: {r.note || 'No note'}</p>
+                                        <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString()}</p>
+                                    </div>
+                                    <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium",
+                                        r.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                                            r.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                                                'bg-yellow-500/20 text-yellow-400')}>
+                                        {r.status}
+                                    </span>
+                                </div>
+
+                                {/* Generated password box */}
+                                {genPasswords[r.id] && (
+                                    <div className="bg-black/40 border border-green-500/30 rounded-lg p-3 space-y-2">
+                                        <p className="text-xs text-muted-foreground">Generated Password (send to {r.email}):</p>
+                                        <div className="flex items-center gap-2">
+                                            <code className="flex-1 font-mono text-green-400 text-sm break-all">
+                                                {showGenPass[r.id] ? genPasswords[r.id] : '••••••••••••'}
+                                            </code>
+                                            <button onClick={() => setShowGenPass(p => ({ ...p, [r.id]: !p[r.id] }))} className="text-muted-foreground hover:text-foreground">
+                                                {showGenPass[r.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                            </button>
+                                            <button onClick={() => copyPass(genPasswords[r.id], r.email)} className="text-primary hover:text-primary/80">
+                                                <Copy className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-yellow-400">⚠ Copy now and send to {r.email} via WhatsApp/Email. Admin: {ADMIN_NOTIFY_EMAIL}</p>
+                                    </div>
+                                )}
+
+                                {r.status === 'pending' && (
+                                    <div className="flex gap-2">
+                                        <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={() => generateAndResolve(r)}>
+                                            <RefreshCw className="w-4 h-4 mr-1" /> Generate & Set Password
+                                        </Button>
+                                        <Button size="sm" variant="destructive" onClick={() => rejectReset(r.id)}>
+                                            <XCircle className="w-4 h-4 mr-1" /> Reject
+                                        </Button>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
-                    )}
-
-                    {/* Credits */}
-                    {activeTab === 'credits' && (
-                        <Card className="border-green-500/20 bg-black/40 backdrop-blur-xl max-w-md mx-auto">
-                            <CardHeader>
-                                <CardTitle>Add Credits to User</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <form onSubmit={handleAddCredits} className="space-y-4">
-                                    <Input placeholder="User Email" value={creditEmail} onChange={e => setCreditEmail(e.target.value)} required />
-                                    <Input placeholder="Amount (e.g. 5000)" type="number" min="0.01" step="0.01" value={creditAmount} onChange={e => setCreditAmount(e.target.value)} required />
-                                    <Input placeholder="Reason (e.g. UPI payment SBI123 verified)" value={creditReason} onChange={e => setCreditReason(e.target.value)} />
-                                    <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
-                                        {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Add Credits
-                                    </Button>
-                                </form>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Deposits */}
-                    {activeTab === 'deposits' && (
-                        <Card className="border-white/10 bg-black/40 backdrop-blur-xl">
-                            <CardHeader>
-                                <CardTitle>Pending Deposits ({deposits.length})</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {loading ? <Loader2 className="mx-auto animate-spin" /> :
-                                    deposits.length === 0 ? <p className="text-center text-muted-foreground">No pending deposits.</p> : (
-                                        <div className="space-y-3">
-                                            {deposits.map((d, i) => (
-                                                <div key={i} className="p-4 rounded bg-white/5 space-y-2">
-                                                    <div className="flex justify-between">
-                                                        <div>
-                                                            <p className="font-bold">{d.user_id}</p>
-                                                            <p className="text-xs text-muted-foreground">UTR: {d.utr_number}</p>
-                                                        </div>
-                                                        <p className="font-bold text-green-400">₹{d.amount}</p>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 flex-1"
-                                                            onClick={() => handleDeposit(d.id, 'CREDIT', d.amount)}>
-                                                            <CheckCircle className="w-3 h-3 mr-1" /> Approve
-                                                        </Button>
-                                                        <Button size="sm" variant="destructive" className="flex-1"
-                                                            onClick={() => handleDeposit(d.id, 'REJECT')}>
-                                                            <XCircle className="w-3 h-3 mr-1" /> Reject
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {/* Password Resets */}
-                    {activeTab === 'resets' && (
-                        <Card className="border-white/10 bg-black/40 backdrop-blur-xl">
-                            <CardHeader>
-                                <CardTitle>Password Reset Requests ({resetRequests.length})</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {loading ? <Loader2 className="mx-auto animate-spin" /> :
-                                    resetRequests.length === 0 ? <p className="text-center text-muted-foreground">No pending resets.</p> : (
-                                        <div className="space-y-4">
-                                            {resetRequests.map((r, i) => (
-                                                <div key={i} className="p-4 rounded bg-white/5 space-y-3">
-                                                    <div>
-                                                        <p className="font-bold">{r.email}</p>
-                                                        <p className="text-xs text-muted-foreground">Note: {r.note}</p>
-                                                    </div>
-                                                    {selectedResetId === r.id ? (
-                                                        <div className="flex gap-2">
-                                                            <Input
-                                                                placeholder="Temp password to set"
-                                                                value={resetTempPass}
-                                                                onChange={e => setResetTempPass(e.target.value)}
-                                                                className="flex-1"
-                                                            />
-                                                            <Button size="sm" className="bg-green-600 hover:bg-green-700"
-                                                                onClick={() => resolveReset(r.id)}>
-                                                                Set
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex gap-2">
-                                                            <Button size="sm" className="flex-1"
-                                                                onClick={() => setSelectedResetId(r.id)}>
-                                                                Resolve
-                                                            </Button>
-                                                            <Button size="sm" variant="destructive" className="flex-1"
-                                                                onClick={() => rejectReset(r.id)}>
-                                                                Reject
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                            </CardContent>
-                        </Card>
-                    )}
+                    ))}
                 </div>
             )}
         </div>
