@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename)
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/xm/', // Explicit base path for GitHub Pages (Force Rebuild)
+  base: '/', // Explicit base path for GitHub Pages (Force Rebuild)
   plugins: [react()],
   resolve: {
     alias: {
