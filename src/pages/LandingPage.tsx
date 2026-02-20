@@ -109,9 +109,6 @@ const LandingPage = () => {
                         <Button size="lg" className="w-full sm:w-auto text-lg h-12 px-8 glow-primary" onClick={() => navigate('auth')}>
                             Start Free Trial <ArrowRight className="ml-2 w-5 h-5" />
                         </Button>
-                        <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg h-12 px-8" onClick={() => navigate('api-docs')}>
-                            View API Docs
-                        </Button>
                     </motion.div>
                 </div>
             </section>

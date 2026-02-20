@@ -50,12 +50,41 @@ const Dashboard = () => {
     const [depositLoading, setDepositLoading] = useState(false)
     const [depositMsg, setDepositMsg] = useState('')
     const [depositOk, setDepositOk] = useState(false)
+    const [sysConfig, setSysConfig] = useState<{ upi_id: string; qr_code_url: string } | null>(null)
 
     const fetchProfile = async () => {
         try {
             const res = await apiClient.get('/api/user/profile')
             setUser(res.data)
         } catch { }
+    }
+
+    const fetchSysConfig = async () => {
+        try {
+            // Priority 1: User-accessible stats or specific config endpoint
+            const res = await apiClient.get('/api/stats')
+            if (res.data.config) {
+                setSysConfig(res.data.config)
+            } else {
+                // Priority 2: Try specific user configuration endpoint found by subagent
+                const configRes = await apiClient.get('/api/user/config-public').catch(() => null)
+                if (configRes && configRes.data) {
+                    setSysConfig(configRes.data)
+                } else {
+                    // Priority 3: Sensible defaults for our system
+                    setSysConfig({
+                        upi_id: '9824584454@ybl',
+                        qr_code_url: 'https://raw.githubusercontent.com/mahendraplus/mahendraplus.github.io/refs/heads/Mahendra-Mali/assets/img/qr/gpay-light.png'
+                    })
+                }
+            }
+        } catch {
+            // Final fallback
+            setSysConfig({
+                upi_id: '9824584454@ybl',
+                qr_code_url: 'https://raw.githubusercontent.com/mahendraplus/mahendraplus.github.io/refs/heads/Mahendra-Mali/assets/img/qr/gpay-light.png'
+            })
+        }
     }
 
     const fetchTotalSpent = async () => {
@@ -74,13 +103,7 @@ const Dashboard = () => {
         fetchPayments()
         fetchProfile()
         fetchTotalSpent()
-
-        // Load Razorpay Script
-        const script = document.createElement('script')
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-        script.async = true
-        document.body.appendChild(script)
-        return () => { document.body.removeChild(script) }
+        fetchSysConfig()
     }, [token])
 
     const fetchPayments = async () => {
@@ -114,45 +137,38 @@ const Dashboard = () => {
         } finally { setSearchLoading(false) }
     }
 
-    const handleRazorpayPayment = async (amount: number) => {
+    const handlePayUPayment = async (amount: number) => {
         if (!amount || amount <= 0) { toast.error('Enter a valid amount'); return }
         setLoading(true)
         try {
-            const orderRes = await apiClient.post('/api/payments/create-order', { amount })
-            const order = orderRes.data
+            // 1) Get PayU parameters from backend
+            const orderRes = await apiClient.post('/api/payments/initiate', { amount })
+            const payuData = orderRes.data
 
-            const options = {
-                key: 'rzp_live_XXXXXXXXXXXXXX',
-                amount: order.amount,
-                currency: order.currency,
-                name: 'Go-Biz Enterprise',
-                description: 'Credit Top-up',
-                order_id: order.id,
-                handler: async (response: any) => {
-                    setLoading(true)
-                    try {
-                        await apiClient.post('/api/payments/verify', {
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature
-                        })
-                        toast.success('Credits added successfully!')
-                        fetchProfile()
-                        fetchPayments()
-                    } catch (err: any) {
-                        toast.error(err.response?.data?.msg || 'Verification failed')
-                    } finally { setLoading(false) }
-                },
-                modal: { ondismiss: () => { setLoading(false); toast.info('Payment cancelled') } },
-                prefill: { name: user?.name, email: user?.email },
-                theme: { color: '#3b82f6' }
-            }
+            // 2) Dynamically build a form and submit it to PayU
+            const form = document.createElement('form')
+            // Use the correct action URL. Typically provided by the backend, or fallback based on env.
+            form.action = payuData.action_url || (payuData.env === 'test' ? 'https://test.payu.in/_payment' : 'https://secure.payu.in/_payment')
+            form.method = 'POST'
+            form.style.display = 'none'
 
-            const rzp = new (window as any).Razorpay(options)
-            rzp.open()
+            // Add all the required PayU hidden fields
+            const fields = ['key', 'txnid', 'amount', 'productinfo', 'firstname', 'email', 'phone', 'surl', 'furl', 'hash', 'udf1', 'udf2', 'udf3', 'udf4', 'udf5']
+
+            fields.forEach(field => {
+                const input = document.createElement('input')
+                input.type = 'hidden'
+                input.name = field
+                input.value = payuData[field] || ''
+                form.appendChild(input)
+            })
+
+            document.body.appendChild(form)
+            form.submit()
         } catch (err: any) {
-            toast.error(err.response?.data?.detail || 'Failed to create order')
-        } finally { setLoading(false) }
+            toast.error(err.response?.data?.detail || 'Failed to initiate payment')
+            setLoading(false)
+        }
     }
 
     const generateKey = async () => {
@@ -439,7 +455,7 @@ const Dashboard = () => {
                             <CardTitle className="flex items-center gap-2">
                                 <Zap className="w-5 h-5 text-primary" /> Instant Recharge
                             </CardTitle>
-                            <CardDescription>Automatic credit top-up via Razorpay (UPI, Card, Netbanking)</CardDescription>
+                            <CardDescription>Automatic credit top-up via PayU (UPI, Card, Netbanking)</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-3 gap-2">
@@ -449,7 +465,7 @@ const Dashboard = () => {
                                         variant="outline"
                                         size="sm"
                                         className="border-primary/20 hover:border-primary/50 hover:bg-primary/5"
-                                        onClick={() => handleRazorpayPayment(amt)}
+                                        onClick={() => handlePayUPayment(amt)}
                                         disabled={loading}
                                     >
                                         ₹{amt}
@@ -469,9 +485,9 @@ const Dashboard = () => {
                             <Button
                                 className="w-full bg-primary hover:bg-primary/90 glow-primary"
                                 disabled={loading || !depositAmount}
-                                onClick={() => handleRazorpayPayment(parseFloat(depositAmount))}
+                                onClick={() => handlePayUPayment(parseFloat(depositAmount))}
                             >
-                                {loading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />} Pay with Razorpay
+                                {loading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />} Pay with PayU
                             </Button>
                         </CardContent>
                     </Card>
@@ -482,9 +498,33 @@ const Dashboard = () => {
                             <CardTitle className="flex items-center gap-2">
                                 <Upload className="w-5 h-5 text-green-400" /> Manual Recharge
                             </CardTitle>
-                            <CardDescription>Transfer via UPI/Bank, then submit your UTR for admin verification.</CardDescription>
+                            <CardDescription>Transfer via UPI, then submit your UTR for admin verification.</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
+                            {sysConfig && (
+                                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4">
+                                    <div className="flex flex-col items-center gap-3">
+                                        {sysConfig.qr_code_url && (
+                                            <div className="bg-white p-2 rounded-lg">
+                                                <img src={sysConfig.qr_code_url} alt="UPI QR Code" className="w-40 h-40 object-contain" />
+                                            </div>
+                                        )}
+                                        <div className="text-center">
+                                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold">Scan & Pay via UPI</p>
+                                            <div className="flex items-center justify-center gap-2 mt-1">
+                                                <code className="text-sm font-mono text-primary bg-primary/10 px-2 py-1 rounded">{sysConfig.upi_id}</code>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { navigator.clipboard.writeText(sysConfig.upi_id); toast.success('UPI ID copied!') }}>
+                                                    <Copy className="w-3.5 h-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground text-center leading-relaxed">
+                                        After paying, please enter the 12-digit UTR/Reference number below.
+                                        Credits will be added within 10-60 minutes after verification.
+                                    </div>
+                                </div>
+                            )}
                             {depositOk ? (
                                 <div className="text-center space-y-2 py-4">
                                     <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
@@ -568,7 +608,7 @@ const Dashboard = () => {
                                 { method: 'POST', path: '/api/user/add-credits', desc: 'Submit payment. Body: { amount, utr_number }' },
                                 { method: 'POST', path: '/api/chat/send', desc: 'Send support message. Body: { text }' },
                                 { method: 'GET', path: '/api/chat/history', desc: 'Get your chat messages' },
-                                { method: 'POST', path: '/api/payments/create-order', desc: 'Create Razorpay order. Body: { amount }' },
+                                { method: 'POST', path: '/api/payments/initiate', desc: 'Initiate PayU payment. Body: { amount }' },
                                 { method: 'GET', path: '/api/payments/history', desc: 'Payment & deposit history' },
                             ].map((ep, i) => (
                                 <motion.div

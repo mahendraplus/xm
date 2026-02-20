@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Helmet } from 'react-helmet-async'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/store/authStore'
+import { useAppStore } from '@/store/appStore'
 import {
     Copy, Play, ChevronDown, ChevronUp, Terminal, Globe,
     Lock, Shield, CreditCard, Search, User, Settings, BookOpen, Loader2
@@ -309,6 +311,26 @@ const EndpointCard = ({ ep }: { ep: Endpoint }) => {
 }
 
 const ApiDocsPage = () => {
+    const { user, token } = useAuthStore()
+    const { navigate } = useAppStore()
+
+    useEffect(() => {
+        if (!token) {
+            toast.error('Please sign in to view API documentation')
+            navigate('auth')
+        }
+    }, [token])
+
+    if (!token || !user) return null
+
+    // Filter sections: Only show Admin section to admin users
+    const filteredSections = SECTIONS.filter(section => {
+        if (section.title === 'Admin') {
+            return user.email === 'mahendrakumargahelot@gmail.com'
+        }
+        return true
+    })
+
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
             <Helmet><title>API Documentation | Go-Biz</title></Helmet>
@@ -335,7 +357,7 @@ const ApiDocsPage = () => {
                 </div>
             </div>
 
-            {SECTIONS.map(section => (
+            {filteredSections.map(section => (
                 <Card key={section.title} className="glass border-border/50 overflow-hidden">
                     <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2 text-lg">

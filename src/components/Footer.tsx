@@ -1,8 +1,8 @@
-import { Rocket, Mail, Phone, MapPin } from 'lucide-react'
+import { Rocket, Mail, Phone, MapPin, MessageCircle } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 
-const APP_VERSION = 'v2.8'
-const BUILD_DATE = '20/02/2026, 13:00:00'
+const APP_VERSION = 'v3.0'
+const BUILD_DATE = '20/02/2026, 20:35:00'
 
 const Footer = () => {
     const { navigate } = useAppStore()
@@ -23,7 +23,12 @@ const Footer = () => {
                             Modern API solutions for data validation and developer tools.
                         </p>
                         <div className="space-y-1.5 text-xs text-muted-foreground">
-                            <p className="font-medium text-foreground">Mahendrakumar Rameshbhai Mali</p>
+                            <p className="flex items-center gap-1.5 text-[10px]">
+                                <MessageCircle className="w-3 h-3 text-green-500" />
+                                <a href="https://wa.me/919824584454" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                                    WhatsApp Support
+                                </a>
+                            </p>
                             <p className="flex items-center gap-1.5">
                                 <Mail className="w-3 h-3 text-primary/70" />
                                 <a href="mailto:mahendrakumargahelot@gmail.com" className="hover:text-primary transition-colors">

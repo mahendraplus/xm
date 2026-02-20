@@ -132,17 +132,18 @@ const SearchPage = () => {
 
             {/* Field Selector */}
             <Card className="glass border-border/50">
-                <CardHeader>
+                <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center justify-between">
                         Select Data Fields
                         <button onClick={toggleAll} className="flex items-center gap-1.5 text-sm font-normal text-primary hover:text-primary/80 transition-colors">
                             {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                            {allSelected ? 'Deselect All' : 'Select All'}
+                            <span className="hidden sm:inline">{allSelected ? 'Deselect All' : 'Select All'}</span>
+                            <span className="sm:hidden">{allSelected ? 'None' : 'All'}</span>
                         </button>
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
                         {FIELD_OPTIONS.map(f => {
                             const selected = selectedFields.includes(f.key)
                             return (
@@ -150,15 +151,15 @@ const SearchPage = () => {
                                     key={f.key}
                                     onClick={() => toggleField(f.key)}
                                     className={cn(
-                                        "flex flex-col items-center gap-1 p-3 rounded-xl border text-xs font-medium transition-all",
+                                        "flex flex-col items-center gap-1 p-2 sm:p-3 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-medium transition-all text-center",
                                         selected
                                             ? "border-primary bg-primary/10 text-primary shadow-sm"
                                             : "border-border/50 bg-muted/30 text-muted-foreground hover:border-border"
                                     )}
                                 >
-                                    <f.icon className="w-4 h-4" />
-                                    <span>{f.label}</span>
-                                    <span className="text-[10px] opacity-70">+₹{f.price.toFixed(0)}</span>
+                                    <f.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                    <span className="truncate w-full">{f.label}</span>
+                                    <span className="text-[8px] sm:text-[10px] opacity-70">+₹{f.price.toFixed(0)}</span>
                                 </button>
                             )
                         })}
@@ -171,24 +172,21 @@ const SearchPage = () => {
 
             {/* Search Form */}
             <form onSubmit={handleSubmit(onSearch)} className="relative z-10">
-                <div className="flex gap-3 p-1 rounded-xl bg-card/30 backdrop-blur-sm border border-primary/20 shadow-[0_0_15px_-3px_rgba(var(--primary),0.3)] hover:shadow-[0_0_20px_-3px_rgba(var(--primary),0.5)] transition-shadow duration-300">
+                <div className="flex flex-col sm:flex-row gap-3 p-2 sm:p-1 rounded-2xl sm:rounded-xl bg-card/30 backdrop-blur-sm border border-primary/20 shadow-[0_0_15px_-3px_rgba(var(--primary),0.3)] hover:shadow-[0_0_20px_-3px_rgba(var(--primary),0.5)] transition-shadow duration-300">
                     <div className="flex-1 relative">
                         <Input
                             placeholder="Enter 10-digit mobile number..."
-                            className="h-14 text-lg pr-28 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                            className="h-12 sm:h-14 text-base sm:text-lg border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-4"
                             maxLength={10}
                             {...register('mobile', {
                                 required: true,
                                 pattern: /^[6-9]\d{9}$/
                             })}
                         />
-                        {errors.mobile && (
-                            <span className="hidden">Enter a valid 10-digit Indian mobile number</span>
-                        )}
                     </div>
-                    <Button type="submit" className="h-14 px-8 glow-primary rounded-lg text-base" disabled={loading}>
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5 mr-2" />}
-                        {!loading && 'Validate Query'}
+                    <Button type="submit" className="h-12 sm:h-14 px-8 glow-primary rounded-xl sm:rounded-lg text-base w-full sm:w-auto" disabled={loading}>
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5 sm:mr-2" />}
+                        {!loading && <span className="ml-2 sm:ml-0">Validate Query</span>}
                     </Button>
                 </div>
                 {errors.mobile && (

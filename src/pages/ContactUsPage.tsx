@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async'
-import { Mail, Phone, MapPin, User } from 'lucide-react'
+import { Mail, Phone, MapPin, User, MessageCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAppStore } from '@/store/appStore'
 
@@ -7,7 +7,8 @@ const ContactUsPage = () => {
     const { navigate } = useAppStore()
 
     const contactInfo = [
-        { icon: User, label: 'Legal Name', value: 'Mahendrakumar Rameshbhai Mali' },
+        { icon: User, label: 'Legal Name', value: 'Mahendra Mali' },
+        { icon: MessageCircle, label: 'WhatsApp', value: 'Chat with Support', href: 'https://wa.me/919824584454' },
         { icon: Mail, label: 'Email', value: 'mahendrakumargahelot@gmail.com', href: 'mailto:mahendrakumargahelot@gmail.com' },
         { icon: Phone, label: 'Phone', value: '+91 98245 84454', href: 'tel:+919824584454' },
         { icon: MapPin, label: 'Address', value: 'Bhabhar, Gujarat, 385320, India' },

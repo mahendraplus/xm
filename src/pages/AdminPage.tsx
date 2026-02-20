@@ -6,7 +6,7 @@ import {
     Loader2, ShieldCheck, CreditCard, Users, KeyRound, BarChart3,
     CheckCircle, XCircle, DollarSign, Copy, RefreshCw, Eye, EyeOff,
     Lock, Settings, Bell, IndianRupee, UserCheck, Tag, Search, Wifi, Clock,
-    MessageCircle, Send
+    MessageCircle, Send, User, Terminal, Shield
 } from 'lucide-react'
 import apiClient from '@/api/client'
 import { Helmet } from 'react-helmet-async'
@@ -44,7 +44,35 @@ interface SystemSettings {
     auto_activate_users: boolean; welcome_credits: number; maintenance_mode: boolean;
     max_search_per_day: number; allow_api_key_access: boolean; search_log_full_mobile: boolean;
     min_deposit_amount: number; max_deposit_amount: number; max_login_attempts: number; block_duration_minutes: number;
-    razorpay_mode: 'test' | 'live';
+    payu_mode: 'test' | 'live';
+    ddos_enabled: boolean;
+    ddos_requests_per_minute: number;
+    ddos_global_rpm: number;
+    ddos_ban_threshold: number;
+    ddos_ban_duration_minutes: number;
+    search_log_full_mobile: boolean;
+    allow_api_key_access: boolean;
+    max_search_per_day: number;
+    welcome_credits: number;
+}
+interface DdosStatus {
+    enabled: boolean;
+    blocked_ips: string[];
+    violation_counts: Record<string, number>;
+    requests_per_minute: number;
+    global_rpm_limit: number;
+}
+interface RequestLog {
+    method: string;
+    url: string;
+    status: number;
+    ip: string;
+    duration_ms: number;
+    timestamp: string;
+}
+interface SystemConfig {
+    upi_id: string;
+    qr_code_url: string;
 }
 interface FieldPrices { base_search_fee: number; fields: Record<string, number> }
 interface Notification { id: string; msg: string; created_at: string; read: boolean }
@@ -76,6 +104,12 @@ const AdminPage = () => {
     const [settings, setSettings] = useState<SystemSettings | null>(null)
     const [settingsDraft, setSettingsDraft] = useState<Partial<SystemSettings>>({})
     const [pricesDraft, setPricesDraft] = useState<Partial<FieldPrices>>({})
+    const [ddosStatus, setDdosStatus] = useState<DdosStatus | null>(null)
+    const [requestLogs, setRequestLogs] = useState<RequestLog[]>([])
+    const [systemLogs, setSystemLogs] = useState<string>('')
+    const [sysConfig, setSysConfig] = useState<SystemConfig | null>(null)
+    const [sysConfigDraft, setSysConfigDraft] = useState<Partial<SystemConfig>>({})
+    const [ddosBlocking, setDdosBlocking] = useState(false)
 
     // Credits form
     const [creditEmail, setCreditEmail] = useState('')
@@ -173,10 +207,8 @@ const AdminPage = () => {
 
     const fetchChatThreads = useCallback(async () => {
         try {
-            // API: GET /api/chat/admin/list
             const r = await apiClient.get('/api/chat/admin/list', authHeader)
             const chatList = Array.isArray(r.data) ? r.data : (r.data.chats || [])
-            // For each chat, fetch messages
             const threads: ChatThread[] = []
             for (const chat of chatList) {
                 try {
@@ -198,9 +230,7 @@ const AdminPage = () => {
                 }
             }
             setChatThreads(threads)
-        } catch (e) {
-            console.error('Failed to fetch chat threads', e)
-        }
+        } catch (e) { console.error('Failed to fetch chat threads', e) }
     }, [adminToken])
 
     const sendAdminReply = async (userEmail: string) => {
@@ -208,27 +238,42 @@ const AdminPage = () => {
         if (!text) return
         setChatReplyLoading(prev => ({ ...prev, [userEmail]: true }))
         try {
-            // API: POST /api/chat/admin/send/{email}
             await apiClient.post(`/api/chat/admin/send/${userEmail}`, { text }, authHeader)
             setChatReplyText(prev => ({ ...prev, [userEmail]: '' }))
             toast.success(`Reply sent to ${userEmail}`)
-            // Refresh just this thread
             try {
                 const hr = await apiClient.get(`/api/chat/admin/history/${userEmail}`, authHeader)
                 const msgs = Array.isArray(hr.data) ? hr.data : (hr.data.messages || [])
                 setChatThreads(prev => prev.map(t => t.user_email === userEmail ? { ...t, messages: msgs } : t))
             } catch { }
-        } catch (e: any) {
-            toast.error(e.response?.data?.detail || 'Failed to send reply')
-        } finally {
-            setChatReplyLoading(prev => ({ ...prev, [userEmail]: false }))
-        }
+        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed to send reply') }
+        finally { setChatReplyLoading(prev => ({ ...prev, [userEmail]: false })) }
     }
+
+    const fetchDdosStatus = useCallback(async () => {
+        try { const r = await apiClient.get('/api/admin/ddos/status', authHeader); setDdosStatus(r.data) } catch { }
+    }, [adminToken])
+
+    const fetchRequestLogs = useCallback(async () => {
+        try { const r = await apiClient.get('/api/admin/logs/requests', authHeader); setRequestLogs(r.data.logs || []) } catch { }
+    }, [adminToken])
+
+    const fetchSystemLogs = useCallback(async () => {
+        try { const r = await apiClient.get('/api/admin/logs/system', authHeader); setSystemLogs(r.data.logs || r.data.output || '') } catch { }
+    }, [adminToken])
+
+    const fetchSysConfig = useCallback(async () => {
+        try {
+            const r = await apiClient.get('/api/admin/config', authHeader)
+            setSysConfig(r.data); setSysConfigDraft(r.data)
+        } catch { }
+    }, [adminToken])
 
     useEffect(() => {
         if (!isLoggedIn) return
         fetchStats(); fetchPending(); fetchUsers(); fetchDeposits(); fetchResets()
         fetchNotifications(); fetchPrices(); fetchSettings(); fetchChatThreads()
+        fetchDdosStatus(); fetchRequestLogs(); fetchSystemLogs(); fetchSysConfig()
     }, [isLoggedIn])
 
     // ── ACTIONS ──────────────────────────────────────────────
@@ -287,6 +332,36 @@ const AdminPage = () => {
             toast.success(`Password set for ${resetEmail}! Send it to them.`)
             setResetEmail(''); setResetTempPass('')
         } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+    }
+
+    // DDoS Actions
+    const handleBlockIp = async (ip: string) => {
+        setDdosBlocking(true)
+        try {
+            await apiClient.post('/api/admin/ddos/block-ip', { ip }, authHeader)
+            toast.success(`IP ${ip} blocked`)
+            fetchDdosStatus()
+        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed to block IP') }
+        finally { setDdosBlocking(false) }
+    }
+
+    const handleUnblockIp = async (ip: string) => {
+        setDdosBlocking(true)
+        try {
+            await apiClient.post('/api/admin/ddos/unblock-ip', { ip }, authHeader)
+            toast.success(`IP ${ip} unblocked`)
+            fetchDdosStatus()
+        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed to unblock IP') }
+        finally { setDdosBlocking(false) }
+    }
+
+    const handleUpdateSysConfig = async (e: React.FormEvent) => {
+        e.preventDefault()
+        try {
+            await apiClient.post('/api/admin/config', sysConfigDraft, authHeader)
+            toast.success('System configuration updated')
+            fetchSysConfig()
+        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed to update config') }
     }
 
     // Custom price per user
@@ -376,6 +451,10 @@ const AdminPage = () => {
         { key: 'direct-reset', label: 'Set Password', icon: UserCheck },
         { key: 'prices', label: 'Prices', icon: Tag },
         { key: 'settings', label: 'Settings', icon: Settings },
+        { key: 'ddos', label: 'DDoS', icon: ShieldCheck },
+        { key: 'req-logs', label: 'Req Logs', icon: Clock },
+        { key: 'sys-logs', label: 'Sys Info', icon: Terminal },
+        { key: 'sys-config', label: 'System Config', icon: Settings },
     ]
 
     // ── LOGIN SCREEN ─────────────────────────────────────────
@@ -677,13 +756,15 @@ const AdminPage = () => {
                         <h2 className="font-semibold">All Users ({users.length})</h2>
                         <Button size="sm" variant="secondary" onClick={fetchUsers}><RefreshCw className="w-4 h-4" /></Button>
                     </div>
-                    <div className="overflow-x-auto rounded-xl glass">
+                    <div className="hidden md:block overflow-x-auto rounded-xl glass border border-border/50">
                         <table className="w-full text-sm">
-                            <thead><tr className="border-b border-white/10 dark:border-white/10">
-                                {['Name', 'Email', 'Credits', 'Spent', 'Searches', 'Status', 'Actions'].map(h => (
-                                    <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
-                                ))}
-                            </tr></thead>
+                            <thead>
+                                <tr className="border-b border-border/50 bg-muted/30">
+                                    {['Name', 'Email', 'Credits', 'Spent', 'Searches', 'Status', 'Actions'].map(h => (
+                                        <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
                             <tbody>
                                 {users.map(u => (
                                     <tr key={u.email} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
@@ -693,10 +774,12 @@ const AdminPage = () => {
                                         <td className="px-4 py-3 text-orange-400">₹{(u.total_spent || 0).toFixed(2)}</td>
                                         <td className="px-4 py-3">{u.searches}</td>
                                         <td className="px-4 py-3">
-                                            <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium",
+                                            <span className={cn(
+                                                "px-2 py-0.5 rounded-full text-xs font-medium",
                                                 u.account_status === 'ACTIVE' ? 'bg-green-500/20 text-green-400' :
                                                     u.account_status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                        'bg-red-500/20 text-red-400')}>{u.account_status}</span>
+                                                        'bg-red-500/20 text-red-400'
+                                            )}>{u.account_status}</span>
                                         </td>
                                         <td className="px-4 py-3">
                                             {u.account_status !== 'ACTIVE'
@@ -707,8 +790,49 @@ const AdminPage = () => {
                                 ))}
                             </tbody>
                         </table>
-                        {users.length === 0 && <div className="text-center py-8 text-muted-foreground">No users found</div>}
                     </div>
+
+                    <div className="md:hidden space-y-3">
+                        {users.map(u => (
+                            <Card key={u.email} className="glass">
+                                <CardContent className="p-4 space-y-3">
+                                    <div className="flex justify-between items-start">
+                                        <div className="min-w-0">
+                                            <p className="font-bold truncate">{u.name}</p>
+                                            <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                        </div>
+                                        <span className={cn(
+                                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                                            u.account_status === 'ACTIVE' ? 'bg-green-500/20 text-green-400' :
+                                                u.account_status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                    'bg-red-500/20 text-red-400'
+                                        )}>{u.account_status}</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 py-2 border-y border-border/30">
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground uppercase">Credits</p>
+                                            <p className="text-xs font-bold text-green-400">₹{u.credits?.toFixed(0)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground uppercase">Spent</p>
+                                            <p className="text-xs font-bold text-orange-400">₹{(u.total_spent || 0).toFixed(0)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground uppercase">Searches</p>
+                                            <p className="text-xs font-bold">{u.searches}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {u.account_status !== 'ACTIVE'
+                                            ? <Button size="sm" className="flex-1 h-8 text-xs bg-green-600 hover:bg-green-700" onClick={() => activateUser(u.email)}>Activate</Button>
+                                            : <Button size="sm" variant="destructive" className="flex-1 h-8 text-xs" onClick={() => deactivateUser(u.email)}>Ban</Button>}
+                                        <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => { setCreditEmail(u.email); setActiveTab('credits') }}>Credits</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                    {users.length === 0 && <div className="text-center py-8 text-muted-foreground">No users found</div>}
                 </div>
             )}
 
@@ -816,9 +940,9 @@ const AdminPage = () => {
                             ))}
                         </div>
                     )}
-                    <div className="overflow-x-auto rounded-xl glass">
+                    <div className="hidden md:block overflow-x-auto rounded-xl glass border border-border/50">
                         <table className="w-full text-sm">
-                            <thead><tr className="border-b border-border/50">
+                            <thead><tr className="border-b border-border/50 bg-muted/30">
                                 {['User', 'Amount', 'UTR', 'Status', 'Date'].map(h => (
                                     <th key={h} className="text-left px-4 py-3 text-muted-foreground font-medium">{h}</th>
                                 ))}
@@ -841,8 +965,30 @@ const AdminPage = () => {
                                 ))}
                             </tbody>
                         </table>
-                        {allDeposits.length === 0 && <div className="text-center py-8 text-muted-foreground"><Button onClick={fetchAllDeposits} variant="secondary" size="sm">Load All Deposits</Button></div>}
                     </div>
+
+                    <div className="md:hidden space-y-2">
+                        {allDeposits.map((d, i) => (
+                            <Card key={i} className="glass">
+                                <CardContent className="p-3 space-y-2 text-xs">
+                                    <div className="flex justify-between items-center">
+                                        <p className="font-bold text-green-400 text-sm">₹{d.amount}</p>
+                                        <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                                            d.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                                                d.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400')}>
+                                            {d.status}
+                                        </span>
+                                    </div>
+                                    <p className="text-muted-foreground truncate">{d.user_id}</p>
+                                    <div className="flex justify-between items-center text-[10px]">
+                                        <p className="text-muted-foreground">UTR: {d.utr_number}</p>
+                                        <p className="text-muted-foreground">{new Date(d.created_at).toLocaleDateString()}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                    {allDeposits.length === 0 && <div className="text-center py-8 text-muted-foreground"><Button onClick={fetchAllDeposits} variant="secondary" size="sm">Load All Deposits</Button></div>}
                 </div>
             )}
 
@@ -1006,16 +1152,16 @@ const AdminPage = () => {
 
                             <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10">
                                 <div>
-                                    <p className="text-sm font-medium">Razorpay Gateway Mode</p>
-                                    <p className="text-xs text-muted-foreground">Currently: {settingsDraft.razorpay_mode?.toUpperCase()}</p>
+                                    <p className="text-sm font-medium">PayU Gateway Mode</p>
+                                    <p className="text-xs text-muted-foreground">Currently: {settingsDraft.payu_mode?.toUpperCase()}</p>
                                 </div>
                                 <div className="flex bg-muted rounded-md p-1">
                                     {(['test', 'live'] as const).map(m => (
                                         <button
                                             key={m}
-                                            onClick={() => handleUpdateSettings({ razorpay_mode: m })}
+                                            onClick={() => handleUpdateSettings({ payu_mode: m })}
                                             className={cn("px-3 py-1 text-xs font-bold rounded uppercase transition-all",
-                                                settingsDraft.razorpay_mode === m ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                                                settingsDraft.payu_mode === m ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground")}
                                         >
                                             {m}
                                         </button>
@@ -1051,8 +1197,147 @@ const AdminPage = () => {
                         </CardContent>
                     </Card>
                 </div>
-            )
-            }
+            )}
+
+            {/* ── DDoS PROTECTION ── */}
+            {activeTab === 'ddos' && (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h1 className="text-2xl font-bold">DDoS Protection</h1>
+                        <Button size="sm" variant="secondary" onClick={fetchDdosStatus}><RefreshCw className="w-4 h-4" /></Button>
+                    </div>
+                    {ddosStatus && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Card className="glass">
+                                <CardHeader><CardTitle>Status & Metrics</CardTitle></CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <span>Status</span>
+                                        <span className={cn("px-2 py-0.5 rounded-full text-xs font-bold", ddosStatus.enabled ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400")}>
+                                            {ddosStatus.enabled ? 'ACTIVE' : 'DISABLED'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span>Current Global RPM</span>
+                                        <span className="font-mono">{ddosStatus.requests_per_minute} / {ddosStatus.global_rpm_limit}</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card className="glass">
+                                <CardHeader><CardTitle>Blocked IPs ({(ddosStatus?.blocked_ips || []).length})</CardTitle></CardHeader>
+                                <CardContent>
+                                    <div className="max-h-60 overflow-y-auto space-y-2">
+                                        {(ddosStatus?.blocked_ips || []).length === 0 ? (
+                                            <p className="text-muted-foreground text-center py-4">No IPs currently blocked</p>
+                                        ) : ddosStatus!.blocked_ips.map(ip => (
+                                            <div key={ip} className="flex justify-between items-center p-2 rounded bg-muted/30">
+                                                <code className="text-sm">{ip}</code>
+                                                <Button size="sm" variant="ghost" className="h-7 text-red-400" onClick={() => handleUnblockIp(ip)} disabled={ddosBlocking}>Unblock</Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── REQUEST LOGS ── */}
+            {activeTab === 'req-logs' && (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h1 className="text-2xl font-bold">Recent Requests</h1>
+                        <Button size="sm" variant="secondary" onClick={fetchRequestLogs}><RefreshCw className="w-4 h-4" /></Button>
+                    </div>
+                    <div className="glass rounded-xl overflow-hidden border border-border/50">
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-muted/50 border-b border-border/50">
+                                    <tr>
+                                        {['Time', 'Method', 'URL', 'Status', 'IP', 'Latency'].map(h => (
+                                            <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground">{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {requestLogs.length === 0 ? (
+                                        <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">No logs found</td></tr>
+                                    ) : requestLogs.map((l, i) => (
+                                        <tr key={i} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                                            <td className="px-4 py-3 text-xs font-mono">{new Date(l.timestamp).toLocaleTimeString()}</td>
+                                            <td className="px-4 py-3"><span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold", l.method === 'POST' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400')}>{l.method}</span></td>
+                                            <td className="px-4 py-3 font-mono text-xs max-w-[200px] truncate" title={l.url}>{l.url}</td>
+                                            <td className="px-4 py-3"><span className={cn("font-bold", l.status >= 400 ? 'text-red-400' : 'text-green-400')}>{l.status}</span></td>
+                                            <td className="px-4 py-3 text-xs font-mono">{l.ip}</td>
+                                            <td className="px-4 py-3 text-xs text-muted-foreground">{l.duration_ms}ms</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="md:hidden divide-y divide-border/30">
+                            {requestLogs.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground text-sm">No logs found</div>
+                            ) : requestLogs.map((l, i) => (
+                                <div key={i} className="p-3 space-y-2 hover:bg-muted/30 transition-colors">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold", l.method === 'POST' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400')}>{l.method}</span>
+                                            <span className={cn("font-bold text-sm", l.status >= 400 ? 'text-red-400' : 'text-green-400')}>{l.status}</span>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">{new Date(l.timestamp).toLocaleTimeString()}</p>
+                                    </div>
+                                    <p className="text-xs font-mono truncate text-muted-foreground" title={l.url}>{l.url}</p>
+                                    <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                                        <span>IP: {l.ip}</span>
+                                        <span>{l.duration_ms}ms</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── SYSTEM INFO ── */}
+            {activeTab === 'sys-logs' && (
+                <div className="space-y-4 h-full flex flex-col">
+                    <div className="flex justify-between items-center">
+                        <h1 className="text-2xl font-bold">System Information</h1>
+                        <Button size="sm" variant="secondary" onClick={fetchSystemLogs}><RefreshCw className="w-4 h-4" /></Button>
+                    </div>
+                    <div className="flex-1 bg-black/80 rounded-xl p-4 border border-primary/20 font-mono text-xs overflow-auto shadow-inner text-green-400/90 whitespace-pre scrollbar-thin">
+                        {systemLogs || 'No system information available'}
+                    </div>
+                </div>
+            )}
+
+            {/* ── SYSTEM CONFIG ── */}
+            {activeTab === 'sys-config' && sysConfig && (
+                <div className="max-w-md space-y-4">
+                    <Card className="glass">
+                        <CardHeader>
+                            <CardTitle>Global Configuration</CardTitle>
+                            <CardDescription>Payment gateway and system endpoints</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleUpdateSysConfig} className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-muted-foreground">UPI ID for Manual Deposits</label>
+                                    <Input value={sysConfigDraft.upi_id || ''} onChange={e => setSysConfigDraft(p => ({ ...p, upi_id: e.target.value }))} placeholder="your-upi@id" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-medium text-muted-foreground">QR Code URL</label>
+                                    <Input value={sysConfigDraft.qr_code_url || ''} onChange={e => setSysConfigDraft(p => ({ ...p, qr_code_url: e.target.value }))} placeholder="https://..." />
+                                </div>
+                                <Button type="submit" className="w-full bg-primary hover:bg-primary/90">Update Configuration</Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div >
     )
 }

@@ -30,6 +30,8 @@ const HistoryPage = () => {
     const [history, setHistory] = useState<HistoryItem[]>([])
     const [loading, setLoading] = useState(true)
     const [deleting, setDeleting] = useState<string | null>(null)
+    const [currentPage, setCurrentPage] = useState(1)
+    const itemsPerPage = 20
 
     const fetchHistory = () => {
         if (!token) { navigate('auth'); return }
@@ -99,12 +101,12 @@ const HistoryPage = () => {
                 </Card>
             ) : (
                 <div className="space-y-3">
-                    {history.map((item, index) => {
+                    {history.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((item, index) => {
                         const cost = item.billing?.total_deducted ?? item.cost ?? 0
                         const fieldCharges = item.billing?.field_charges || {}
                         const hasFieldCharges = Object.keys(fieldCharges).length > 0
                         return (
-                            <Card key={item.id || index} className="glass hover:border-white/20 transition-colors">
+                            <Card key={item.id || (currentPage - 1) * itemsPerPage + index} className="glass hover:border-white/20 transition-colors">
                                 <CardContent className="p-4 space-y-3">
                                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                         {/* Mobile info */}
@@ -159,7 +161,7 @@ const HistoryPage = () => {
                                         <div className="flex flex-wrap gap-1.5 pt-1 border-t border-white/5">
                                             {item.billing?.base_fee !== undefined && (
                                                 <span className="text-xs bg-white/5 px-2 py-0.5 rounded-full text-muted-foreground">
-                                                    base: ₹{item.billing.base_fee.toFixed(1)}
+                                                    base: ₹{item.billing.base_fee.toFixed(2)}
                                                 </span>
                                             )}
                                             {Object.entries(fieldCharges).map(([field, charge]) => (
@@ -185,6 +187,35 @@ const HistoryPage = () => {
                             </Card>
                         )
                     })}
+
+                    {/* Pagination */}
+                    {history.length > itemsPerPage && (
+                        <div className="flex items-center justify-between gap-4 pt-4">
+                            <p className="text-sm text-muted-foreground">
+                                Showing <span className="text-foreground font-medium">{(currentPage - 1) * itemsPerPage + 1}</span>-
+                                <span className="text-foreground font-medium">{Math.min(currentPage * itemsPerPage, history.length)}</span> of
+                                <span className="text-foreground font-medium"> {history.length}</span> results
+                            </p>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={currentPage === 1}
+                                    onClick={() => { setCurrentPage(p => p - 1); window.scrollTo(0, 0) }}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={currentPage * itemsPerPage >= history.length}
+                                    onClick={() => { setCurrentPage(p => p + 1); window.scrollTo(0, 0) }}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
