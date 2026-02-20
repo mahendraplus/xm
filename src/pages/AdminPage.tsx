@@ -1251,7 +1251,7 @@ const AdminPage = () => {
                             <table className="w-full text-sm">
                                 <thead className="bg-muted/50 border-b border-border/50">
                                     <tr>
-                                        {['Time', 'Method', 'URL', 'Status', 'IP', 'Latency'].map(h => (
+                                        {['Time', 'Method', 'URL', 'Status', 'IP', 'Latency', 'Actions'].map(h => (
                                             <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground">{h}</th>
                                         ))}
                                     </tr>
@@ -1267,6 +1267,11 @@ const AdminPage = () => {
                                             <td className="px-4 py-3"><span className={cn("font-bold", l.status >= 400 ? 'text-red-400' : 'text-green-400')}>{l.status}</span></td>
                                             <td className="px-4 py-3 text-xs font-mono">{l.ip}</td>
                                             <td className="px-4 py-3 text-xs text-muted-foreground">{l.duration_ms}ms</td>
+                                            <td className="px-4 py-3">
+                                                <Button size="sm" variant="ghost" className="h-7 text-red-400 hover:text-red-300 hover:bg-red-400/10" onClick={() => handleBlockIp(l.ip)} disabled={ddosBlocking}>
+                                                    Block
+                                                </Button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -1287,8 +1292,13 @@ const AdminPage = () => {
                                     </div>
                                     <p className="text-xs font-mono truncate text-muted-foreground" title={l.url}>{l.url}</p>
                                     <div className="flex justify-between items-center text-[10px] text-muted-foreground">
-                                        <span>IP: {l.ip}</span>
-                                        <span>{l.duration_ms}ms</span>
+                                        <div className="flex flex-col">
+                                            <span>IP: {l.ip}</span>
+                                            <span>{l.duration_ms}ms</span>
+                                        </div>
+                                        <Button size="sm" variant="ghost" className="h-7 text-red-400 text-[10px]" onClick={() => handleBlockIp(l.ip)} disabled={ddosBlocking}>
+                                            Block IP
+                                        </Button>
                                     </div>
                                 </div>
                             ))}
