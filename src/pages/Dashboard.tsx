@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import {
     Copy, RefreshCw, CreditCard, Activity, Key, Clock, CheckCircle2, XCircle,
     Upload, BarChart3, ChevronRight, Terminal, Play, Eye, EyeOff, Code2,
-    AlertTriangle, TrendingUp, Wallet, IndianRupee, Zap, Search, Timer
+    AlertTriangle, TrendingUp, IndianRupee, Zap, Search, Timer
 } from 'lucide-react'
 import apiClient from '@/api/client'
 import { Helmet } from 'react-helmet-async'
@@ -126,7 +126,7 @@ const Dashboard = () => {
                 amount: order.amount,
                 currency: order.currency,
                 name: 'Go-Biz Enterprise',
-                description: 'Wallet Top-up',
+                description: 'Credit Top-up',
                 order_id: order.id,
                 handler: async (response: any) => {
                     setLoading(true)
@@ -178,7 +178,7 @@ const Dashboard = () => {
                 utr_number: depositUTR,
                 screenshot_url: depositScreenshot || undefined,
             })
-            setDepositMsg(res.data.msg || 'Submitted! Admin will verify and credit your wallet.')
+            setDepositMsg(res.data.msg || 'Submitted! Admin will verify and credit your account.')
             setDepositOk(true)
             toast.success('Payment request submitted! Admin will verify soon.')
             setDepositAmount(''); setDepositUTR(''); setDepositScreenshot('')
@@ -238,7 +238,7 @@ const Dashboard = () => {
                                 required: true,
                                 pattern: /^[6-9]\d{9}$/
                             })}
-                            placeholder="Quick Search — Enter 10-digit mobile number..."
+                            placeholder="Quick Validate — Enter 10-digit number..."
                             className="w-full pl-10 pr-4 py-3 bg-background/60 border border-border/50 rounded-xl text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/50 outline-none transition-all font-mono"
                         />
                         {searchErrors.mobile && (
@@ -247,7 +247,7 @@ const Dashboard = () => {
                     </div>
                     <Button type="submit" disabled={searchLoading} className="glow-primary h-12 px-6">
                         {searchLoading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
-                        Search
+                        Validate
                     </Button>
                 </form>
 
@@ -302,7 +302,7 @@ const Dashboard = () => {
                         <Activity className="w-4 h-4 mr-1" /> History
                     </Button>
                     <Button size="sm" onClick={() => navigate('search')} className="glow-primary">
-                        <Zap className="w-4 h-4 mr-1" /> Full Search <ChevronRight className="w-3 h-3 ml-1" />
+                        <Zap className="w-4 h-4 mr-1" /> Full Validate <ChevronRight className="w-3 h-3 ml-1" />
                     </Button>
                 </div>
             </div>
@@ -310,8 +310,8 @@ const Dashboard = () => {
             {/* Stats Row */}
             <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                 {[
-                    { label: 'Wallet Balance', val: `₹${user.credits?.toFixed(2) ?? '0.00'}`, icon: Wallet, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-                    { label: 'Total Searches', val: user.searches ?? 0, icon: BarChart3, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+                    { label: 'API Credits', val: `₹${user.credits?.toFixed(2) ?? '0.00'}`, icon: IndianRupee, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+                    { label: 'API Calls', val: user.searches ?? 0, icon: BarChart3, color: 'text-purple-400', bg: 'bg-purple-500/10' },
                     { label: 'Credits Spent', val: `₹${totalSpent.toFixed(2)}`, icon: TrendingUp, color: 'text-orange-400', bg: 'bg-orange-500/10' },
                     { label: 'Account', val: user.account_status || 'ACTIVE', icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-500/10' },
                 ].map((s, i) => (
@@ -439,7 +439,7 @@ const Dashboard = () => {
                             <CardTitle className="flex items-center gap-2">
                                 <Zap className="w-5 h-5 text-primary" /> Instant Recharge
                             </CardTitle>
-                            <CardDescription>Automatic wallet top-up via Razorpay (UPI, Card, Netbanking)</CardDescription>
+                            <CardDescription>Automatic credit top-up via Razorpay (UPI, Card, Netbanking)</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-3 gap-2">

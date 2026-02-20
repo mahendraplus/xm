@@ -92,7 +92,7 @@ const SearchPage = () => {
             console.error(err)
             const detail = err.response?.data?.detail || err.response?.data?.msg
             if (err.response?.status === 402) {
-                const m = 'Insufficient credits. Please top up your wallet.'
+                const m = 'Insufficient credits. Please top up your API credits.'
                 setError(m); toast.error(m)
             } else {
                 const m = typeof detail === 'string' ? detail : 'Search failed.'
@@ -112,7 +112,7 @@ const SearchPage = () => {
             <Helmet><title>Search | Go-Biz</title></Helmet>
 
             <div>
-                <h1 className="text-3xl font-bold gradient-text">Mobile Data Search</h1>
+                <h1 className="text-3xl font-bold gradient-text">Data Validation API</h1>
                 <p className="text-muted-foreground mt-1">Lookup telecom & profile data by mobile number</p>
             </div>
 
@@ -121,7 +121,7 @@ const SearchPage = () => {
                 <div className="flex items-center justify-between glass rounded-xl px-5 py-3">
                     <div className="flex items-center gap-2 text-sm">
                         <IndianRupee className="w-4 h-4 text-primary" />
-                        <span className="text-muted-foreground">Wallet Balance:</span>
+                        <span className="text-muted-foreground">API Credits:</span>
                         <span className="font-bold text-lg text-primary">₹{user.credits?.toFixed(2)}</span>
                     </div>
                     <div className="text-sm text-muted-foreground">
@@ -188,7 +188,7 @@ const SearchPage = () => {
                     </div>
                     <Button type="submit" className="h-14 px-8 glow-primary rounded-lg text-base" disabled={loading}>
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5 mr-2" />}
-                        {!loading && 'Search'}
+                        {!loading && 'Validate Query'}
                     </Button>
                 </div>
                 {errors.mobile && (

@@ -17,6 +17,10 @@ import NotFound from '@/pages/NotFound'
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage'
 import ApiDocsPage from '@/pages/ApiDocsPage'
 import ChatPage from '@/pages/ChatPage'
+import TermsPage from '@/pages/TermsPage'
+import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage'
+import RefundPolicyPage from '@/pages/RefundPolicyPage'
+import ContactUsPage from '@/pages/ContactUsPage'
 
 function App() {
   const { theme, accentColor, currentPage } = useAppStore()
@@ -50,6 +54,10 @@ function App() {
       case 'forgot-password': return <ForgotPasswordPage />
       case 'api-docs': return <ApiDocsPage />
       case 'chat': return <ChatPage />
+      case 'terms': return <TermsPage />
+      case 'privacy': return <PrivacyPolicyPage />
+      case 'refund': return <RefundPolicyPage />
+      case 'contact': return <ContactUsPage />
       default: return <NotFound />
     }
   }

@@ -1,0 +1,317 @@
+================================================================================
+                      GO-BIZ — FULL WEBSITE INFORMATION
+================================================================================
+Generated: 2026-02-20
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+Name          : Go-Biz | Modern API Solutions
+Version       : v2.6
+Type          : SaaS Web Application — Mobile Number Lookup & KYC Data API
+Homepage URL  : https://mahendraplus.github.io/xm/
+API Base URL  : https://mahendraplus-api-db-in.hf.space
+GitHub Repo   : mahendraplus/xm
+
+Description:
+  Go-Biz is a credit-based mobile number lookup and KYC data retrieval
+  platform. Users register, purchase credits via Razorpay, and then search
+  for personal information (name, father's name, address, email, alternate
+  number, DOB, gender, carrier, circle, Aadhaar-linked ID) associated with
+  Indian mobile numbers. The platform provides a REST API for programmatic
+  access alongside a rich web UI.
+
+
+================================================================================
+2. TECH STACK
+================================================================================
+
+--- Frontend ---
+  Framework       : React 19.2 (with TypeScript ~5.9)
+  Build Tool      : Vite 7.3
+  Styling         : TailwindCSS 3.4 + CSS Variables (HSL-based theming)
+  State Mgmt      : Zustand 5.0 (persisted to localStorage)
+  Routing         : Client-side SPA routing via Zustand state + browser
+                    History API (pushState/popState), NOT react-router-dom
+  HTTP Client     : Axios 1.13
+  Animations      : Framer Motion 12.34
+  Icons           : Lucide React 0.574
+  Forms           : React Hook Form 7.71
+  Toasts/Notifs   : Sonner 2.0
+  SEO             : react-helmet-async 2.0
+  UI Components   : Radix UI primitives (react-slot), custom Card/Button
+  Deployment      : GitHub Pages (via GitHub Actions workflow)
+  Base Path       : /xm/
+
+--- Backend (separate repo / HuggingFace Space) ---
+  Framework       : Python FastAPI
+  Hosting         : HuggingFace Spaces (Docker-based)
+  Auth            : JWT (HS256) — login returns bearer token
+  Database        : (Managed within HF Space; exact DB not exposed)
+  Payments        : Razorpay integration (test & live modes)
+  Platform        : Linux container
+
+
+================================================================================
+3. WEBSITE PAGES & FEATURES
+================================================================================
+
+Page                   | File                          | Description
+-----------------------|-------------------------------|----------------------------------
+Landing Page           | LandingPage.tsx (10.9 KB)     | Hero section, live stats (total users, total searches, recent activity feed), feature highlights (Search, Database, Shield, Zap icons), pricing tiers, CTA buttons
+Authentication         | AuthPage.tsx (7.0 KB)         | Login & Registration forms with JWT-based auth
+Dashboard              | Dashboard.tsx (36.1 KB)       | User profile card, credit balance, search count, API key management, payment history, quick actions, test API section
+Search                 | SearchPage.tsx (19.1 KB)      | Mobile number search form, field selection (name, fname, address, email, alt, dob, gender, carrier, circle, id), result display with billing breakdown, wallet remaining
+Search History         | HistoryPage.tsx (10.6 KB)     | Paginated history of past searches with cost/billing details
+Admin Panel            | AdminPage.tsx (67.8 KB)       | Full admin dashboard: user management (activate/deactivate, add credits, reset passwords), system health (CPU, RAM, disk, network, uptime), admin chat, settings management, price configuration, request logs, system info (neofetch)
+Forgot Password        | ForgotPasswordPage.tsx (6.6 KB)| Password reset request flow
+API Documentation      | ApiDocsPage.tsx (15.8 KB)     | Interactive API docs with cURL examples for all endpoints
+Chat / Support         | ChatPage.tsx (9.7 KB)         | Real-time user ↔ admin messaging system
+404 Not Found          | NotFound.tsx (1.5 KB)         | Custom 404 error page
+
+Total: 10 pages
+
+
+================================================================================
+4. COMPONENT ARCHITECTURE
+================================================================================
+
+src/
+├── api/
+│   └── client.ts            — Axios instance with baseURL, JWT interceptor, Spaces JWT header
+├── assets/
+│   └── (static assets)
+├── components/
+│   ├── Navbar.tsx            — Responsive navbar with theme toggle (dark/light/system),
+│   │                           accent color picker (blue/purple/green/orange/rose/cyan),
+│   │                           notification bell, user menu, admin link
+│   ├── Footer.tsx            — Site footer with links
+│   └── ui/
+│       ├── button.tsx        — Reusable Button component (CVA variants)
+│       ├── card.tsx          — Card, CardHeader, CardContent, CardTitle, CardDescription
+│       └── (utils)
+├── layouts/
+│   └── RootLayout.tsx        — Main layout wrapper (Navbar + content + Footer)
+├── lib/
+│   └── utils.ts              — cn() utility (clsx + tailwind-merge)
+├── pages/
+│   └── (10 page files listed above)
+├── store/
+│   ├── appStore.ts           — Theme, accent color, current page, navigation (Zustand persisted)
+│   └── authStore.ts          — Auth token, user profile, spaces JWT, API URL (Zustand persisted)
+├── App.tsx                   — Root component, page router, theme/accent initializer, profile hydration
+├── main.tsx                  — ReactDOM entry point
+├── index.css                 — Global styles, CSS variables for theming, dark/light mode tokens
+├── App.css                   — App-level styles
+└── vite-env.d.ts             — Vite type declarations
+
+
+================================================================================
+5. THEMING & DESIGN SYSTEM
+================================================================================
+
+Themes      : Dark (default), Light, System (auto-detects OS preference)
+Accent Colors: Blue, Purple, Green, Orange, Rose, Cyan
+Color System : HSL-based CSS custom properties
+  --background, --foreground, --card, --primary, --secondary,
+  --muted, --accent, --destructive, --border, --input, --ring
+  All defined in index.css and consumed via Tailwind config
+Typography  : Inter (Google Fonts), sans-serif fallback
+Animations  : Framer Motion for page transitions and micro-interactions
+Border Radius: CSS variable --radius with lg/md/sm variants
+Persistence : Theme & accent color saved to localStorage via Zustand persist
+
+
+================================================================================
+6. AUTHENTICATION & AUTHORIZATION
+================================================================================
+
+Method      : JWT Bearer Token (HS256)
+Flow        :
+  1. User registers via POST /api/auth/register
+  2. Account is auto-activated (configurable by admin)
+  3. User logs in via POST /api/auth/login → receives JWT token
+  4. Token stored in Zustand authStore (persisted to localStorage)
+  5. Every API request attaches "Authorization: Bearer <token>" via Axios interceptor
+  6. On app mount, profile is re-hydrated from GET /api/user/profile
+  7. If token is invalid/expired, user is automatically logged out
+
+Roles       : "user" (standard), "admin" (full access)
+Security    : Max login attempts (5), block duration (10 minutes), configurable
+Forgot Pass : Users can request password reset; admin resolves via admin panel
+
+
+================================================================================
+7. FULL API ENDPOINT LIST
+================================================================================
+
+--- Public Endpoints (No Auth) ---
+  GET  /api/stats                                    — Total users, total searches, recent activity
+  GET  /api/pricing                                  — Pricing tiers (basic: ₹1, address: ₹3.5, full_kyc: ₹10, deep: ₹25)
+
+--- Auth Endpoints ---
+  POST /api/auth/register                            — Register new user (name, email, password)
+  POST /api/auth/login                               — Login → returns JWT token
+
+--- User Endpoints (Requires User Token) ---
+  GET  /api/user/profile                             — User profile (name, email, role, credits, searches, API key, status)
+  POST /api/user/search                              — Search by mobile number with field selection
+  GET  /api/user/history                             — Search history with billing details
+
+--- Payment Endpoints (Requires User Token) ---
+  POST /api/payments/create-order                    — Create Razorpay payment order
+  GET  /api/payments/history                         — Payment transaction history
+
+--- Chat Endpoints ---
+  POST /api/chat/send                                — User sends a support message
+  GET  /api/chat/history                             — User gets chat history
+
+--- Admin Endpoints (Requires Admin Token) ---
+  GET  /api/admin/debug-token-tmp                    — Get temporary admin token (internal)
+  POST /api/admin/users/{email}/activate             — Activate a user account
+  POST /api/admin/users/{email}/credits/add          — Add credits to user wallet
+  GET  /api/admin/stats                              — System dashboard (users, searches, pending items, health)
+  GET  /api/admin/settings                           — System settings (auto-activate, maintenance mode, limits, Razorpay mode)
+  GET  /api/admin/config/prices                      — Per-field pricing configuration
+  GET  /api/admin/logs/requests                      — Recent HTTP request logs (method, path, status, duration, IP)
+  GET  /api/admin/logs/system                        — System info (neofetch output, container env vars)
+  GET  /api/chat/admin/list                          — List all user chats (with unread indicators)
+  GET  /api/chat/admin/history/{email}               — View a specific user's chat history
+  POST /api/chat/admin/send/{email}                  — Admin sends reply to a user
+
+
+================================================================================
+8. SEARCH FEATURE — FIELD PRICING
+================================================================================
+
+Each search costs a base fee + per-field charges:
+
+  Field       | Price (₹/credits)
+  ------------|-------------------
+  base_fee    | 1.0
+  name        | 5.0
+  fname       | 10.0
+  address     | 25.0
+  email       | 15.0
+  alt         | 20.0
+  dob         | 5.0
+  gender      | 2.0
+  carrier     | 1.0
+  circle      | 1.0
+  id (Aadhaar)| 100.0
+  ------------|-------------------
+  ALL fields  | 177.0 (typical)
+
+Users can select individual fields or "ALL" to control cost.
+Returned data includes: mobile, name, fname, address, email, alt, dob,
+gender, carrier, circle, id (Aadhaar-linked 12-digit number).
+
+
+================================================================================
+9. PAYMENT INTEGRATION
+================================================================================
+
+Gateway     : Razorpay (Indian payment gateway)
+Modes       : Test mode / Live mode (configurable by admin)
+Currency    : INR (Indian Rupees)
+Limits      : Min deposit ₹100, Max deposit ₹1,00,000
+Flow        :
+  1. User initiates payment → POST /api/payments/create-order
+  2. Razorpay order created with amount in paise (₹500 = 50000 paise)
+  3. Frontend opens Razorpay checkout modal
+  4. On success, credits are added to user wallet
+  5. On modal dismiss, order remains in "created" status
+  6. Payment history tracked and visible in Dashboard
+
+
+================================================================================
+10. ADMIN PANEL CAPABILITIES
+================================================================================
+
+  • User Management     — View all users, activate/deactivate accounts, add credits, reset passwords
+  • System Health       — Live CPU %, memory (used/total GB), disk usage, network I/O, uptime
+  • Dashboard Stats     — Total users, total searches, pending activations, pending payments, pending resets
+  • Settings Panel      — Toggle auto-activation, set welcome credits, maintenance mode, search limits,
+                          API key access, search log visibility, Razorpay mode, deposit limits,
+                          login attempt limits, block duration
+  • Price Configuration — Set per-field search pricing
+  • Request Logs        — View recent HTTP requests (timestamp, method, path, status, duration, IP)
+  • System Info         — Neofetch output, container environment variables (HF_SPACE_ID, timezone)
+  • Admin Chat          — View all user conversations, reply to support messages, unread indicators
+
+
+================================================================================
+11. DEPLOYMENT & CI/CD
+================================================================================
+
+Frontend Hosting : GitHub Pages (https://mahendraplus.github.io/xm/)
+Backend Hosting  : HuggingFace Spaces (Docker container)
+CI/CD            : GitHub Actions workflow (.github/workflows/deploy.yml)
+Build Command    : tsc -b && vite build
+Output Directory : dist/
+Base Path        : /xm/ (configured in vite.config.ts)
+Branch           : main
+
+
+================================================================================
+12. KEY CONFIGURATION FILES
+================================================================================
+
+  File                 | Purpose
+  ---------------------|-------------------------------------------
+  package.json         | Dependencies, scripts, homepage URL
+  vite.config.ts       | Vite config with base path /xm/ and @ alias
+  tailwind.config.js   | Tailwind theme extension (HSL colors, radii, animations)
+  postcss.config.js    | PostCSS with Tailwind and Autoprefixer
+  tsconfig.json        | TypeScript project references
+  tsconfig.app.json    | App TypeScript config (strict mode, path aliases)
+  tsconfig.node.json   | Node/build TypeScript config
+  eslint.config.js     | ESLint config with React hooks and refresh plugins
+  index.html           | Entry HTML with cache-busting meta tags and SW cleanup
+
+
+================================================================================
+13. STATE MANAGEMENT
+================================================================================
+
+Store: Zustand with persist middleware (localStorage)
+
+appStore (key: "app-settings"):
+  • theme       — 'dark' | 'light' | 'system'
+  • accentColor — 'blue' | 'purple' | 'green' | 'orange' | 'rose' | 'cyan'
+  • currentPage — SPA page routing state
+  • navigate()  — Push page to browser history
+
+authStore (key: "auth-storage"):
+  • token       — JWT bearer token
+  • user        — User profile object (name, email, role, credits, searches, api_key, etc.)
+  • spacesJwt   — HuggingFace Spaces JWT (for cross-origin cookie auth)
+  • apiUrl      — Runtime API URL override
+  • logout()    — Clears token and user
+
+
+================================================================================
+14. NOTABLE FEATURES
+================================================================================
+
+  ✅ Dark/Light/System theme with 6 accent color options
+  ✅ Credit-based wallet system for pay-per-search
+  ✅ Granular field selection to control search costs
+  ✅ Razorpay payment integration (test + live)
+  ✅ Real-time admin ↔ user chat/support system
+  ✅ Comprehensive admin panel with system health monitoring
+  ✅ JWT authentication with auto-hydration on page load
+  ✅ API documentation page with cURL examples
+  ✅ Search history with detailed billing breakdowns
+  ✅ Responsive design with Framer Motion animations
+  ✅ Browser history support (back/forward navigation)
+  ✅ Cache-busting meta tags + service worker cleanup
+  ✅ Custom 404 page
+  ✅ Per-field configurable pricing by admin
+  ✅ Rate limiting (max login attempts + block duration)
+
+
+================================================================================
+                          END OF WEBSITE INFORMATION
+================================================================================

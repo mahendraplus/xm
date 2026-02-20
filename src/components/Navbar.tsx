@@ -147,7 +147,7 @@ const Navbar = () => {
                         {user ? (
                             <div className="flex items-center space-x-1">
                                 <Button variant="ghost" size="sm" onClick={() => navTo('dashboard')}>Dashboard</Button>
-                                <Button variant="ghost" size="sm" onClick={() => navTo('search')}>Search</Button>
+                                <Button variant="ghost" size="sm" onClick={() => navTo('search')}>Validate</Button>
                                 <Button variant="ghost" size="sm" onClick={() => navTo('history')}>History</Button>
                                 <Button variant="ghost" size="sm" onClick={() => navTo('chat')} className="relative">
                                     <MessageCircle className="w-4 h-4 mr-1" /> Chat
@@ -206,7 +206,7 @@ const Navbar = () => {
                             {user ? (
                                 <>
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('dashboard')}>Dashboard</Button>
-                                    <Button className="w-full" variant="secondary" onClick={() => navTo('search')}>Search</Button>
+                                    <Button className="w-full" variant="secondary" onClick={() => navTo('search')}>Validate</Button>
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('history')}>History</Button>
                                     <Button className="w-full" variant="secondary" onClick={() => navTo('chat')}>
                                         <MessageCircle className="w-4 h-4 mr-2" /> Chat

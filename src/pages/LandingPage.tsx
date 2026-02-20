@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, Search, Database, Shield, Zap, Loader2 } from 'lucide-react'
+import { ArrowRight, CheckCircle, Database, Shield, Zap, Loader2, Activity } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Helmet } from 'react-helmet-async'
@@ -44,24 +44,24 @@ const LandingPage = () => {
 
     const features = [
         {
-            icon: Search,
-            title: "Deep Search",
-            description: "Find details by mobile number with high accuracy."
-        },
-        {
-            icon: Database,
-            title: "Massive Database",
-            description: "Access millions of records instantly."
+            icon: Zap,
+            title: "API Uptime",
+            description: "99.9% uptime guaranteed with auto-failover and redundant infrastructure."
         },
         {
             icon: Shield,
-            title: "Secure & Private",
-            description: "Your searches are private and secure."
+            title: "Secure Routing",
+            description: "End-to-end encrypted API requests with TLS 1.3 and IP whitelisting."
         },
         {
-            icon: Zap,
-            title: "Real-time API",
-            description: "Lightning fast responses for your applications."
+            icon: CheckCircle,
+            title: "Syntax Checking",
+            description: "Validate input formats, data types, and schema compliance in real-time."
+        },
+        {
+            icon: Database,
+            title: "Developer Tools",
+            description: "SDKs, interactive docs, and sandbox environments for rapid integration."
         }
     ]
 
@@ -84,9 +84,9 @@ const LandingPage = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight"
                     >
-                        Data Intelligence <br />
+                        Advanced Data <br />
                         <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                            Reimagined
+                            Validation API
                         </span>
                     </motion.h1>
 
@@ -96,8 +96,8 @@ const LandingPage = () => {
                         transition={{ delay: 0.1 }}
                         className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
                     >
-                        Access comprehensive data with our powerful API.
-                        Secure, scalable, and designed for modern businesses.
+                        Developer tools for syntax checking, data validation, and
+                        network routing APIs. Secure, scalable, and built for modern businesses.
                     </motion.p>
 
                     <motion.div
@@ -125,7 +125,7 @@ const LandingPage = () => {
                     </div>
                     <div className="space-y-2">
                         <h3 className="text-4xl font-bold text-foreground">{stats ? stats.total_searches.toLocaleString() : '5k+'}</h3>
-                        <p className="text-muted-foreground text-sm uppercase tracking-wider">Total Searches</p>
+                        <p className="text-muted-foreground text-sm uppercase tracking-wider">API Calls</p>
                     </div>
                     <div className="space-y-2">
                         <h3 className="text-4xl font-bold text-foreground">99.9%</h3>
@@ -144,8 +144,8 @@ const LandingPage = () => {
                     {/* Live Activity (30%) */}
                     <div className="lg:col-span-4 space-y-6">
                         <div className="flex items-center gap-2">
-                            <Zap className="w-5 h-5 text-primary animate-pulse" />
-                            <h2 className="text-xl font-bold uppercase tracking-tight">Live Search Activity</h2>
+                            <Activity className="w-5 h-5 text-primary animate-pulse" />
+                            <h2 className="text-xl font-bold uppercase tracking-tight">Live API Activity</h2>
                         </div>
                         <div className="space-y-3">
                             {stats?.recent ? stats.recent.map((r, i) => (
@@ -158,7 +158,7 @@ const LandingPage = () => {
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                            <Search className="w-4 h-4" />
+                                            <Activity className="w-4 h-4" />
                                         </div>
                                         <div>
                                             <p className="font-bold text-foreground">{r.mobile_mask}</p>
@@ -166,7 +166,7 @@ const LandingPage = () => {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-green-400 font-bold">{r.result_count} Matches</p>
+                                        <p className="text-green-400 font-bold">{r.result_count} Results</p>
                                         <p className="text-[10px] text-muted-foreground">₹{r.billing.total_deducted.toFixed(0)} Charged</p>
                                     </div>
                                 </motion.div>
@@ -182,7 +182,7 @@ const LandingPage = () => {
                     <div className="lg:col-span-8">
                         <div className="mb-8 space-y-4">
                             <h2 className="text-3xl md:text-5xl font-bold">Built for Scale</h2>
-                            <p className="text-muted-foreground text-lg italic">Enterprise-grade security meets lightning-fast data intelligence.</p>
+                            <p className="text-muted-foreground text-lg italic">Enterprise-grade security meets lightning-fast data validation.</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {features.map((feature, index) => (

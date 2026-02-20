@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 
 export type Theme = 'dark' | 'light' | 'system'
 export type AccentColor = 'blue' | 'purple' | 'green' | 'orange' | 'rose' | 'cyan'
-export type Page = 'home' | 'auth' | 'dashboard' | 'search' | 'history' | 'admin' | 'forgot-password' | 'api-docs' | 'chat' | '404'
+export type Page = 'home' | 'auth' | 'dashboard' | 'search' | 'history' | 'admin' | 'forgot-password' | 'api-docs' | 'chat' | 'terms' | 'privacy' | 'refund' | 'contact' | '404'
 
 const ACCENT_COLORS: Record<AccentColor, { hue: number; sat: number; light: number }> = {
     blue: { hue: 217, sat: 91, light: 60 },
