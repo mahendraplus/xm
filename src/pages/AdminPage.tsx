@@ -6,7 +6,7 @@ import {
     Loader2, ShieldCheck, CreditCard, Users, KeyRound, BarChart3,
     CheckCircle, XCircle, DollarSign, Copy, RefreshCw, Eye, EyeOff,
     Lock, Settings, Bell, IndianRupee, UserCheck, Tag, Search, Wifi, Clock,
-    MessageCircle, Send, User, Terminal, Shield
+    MessageCircle, Send, Terminal
 } from 'lucide-react'
 import apiClient from '@/api/client'
 import { Helmet } from 'react-helmet-async'
@@ -50,10 +50,6 @@ interface SystemSettings {
     ddos_global_rpm: number;
     ddos_ban_threshold: number;
     ddos_ban_duration_minutes: number;
-    search_log_full_mobile: boolean;
-    allow_api_key_access: boolean;
-    max_search_per_day: number;
-    welcome_credits: number;
 }
 interface DdosStatus {
     enabled: boolean;
