@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -38,7 +38,7 @@ interface Stats {
 }
 interface PendingUser { email: string; name: string; created_at: string; credits: number; account_status: string }
 interface UserRecord { email: string; name: string; credits: number; searches: number; account_status: string; total_spent?: number }
-interface Deposit { id: string; user_id: string; amount: number; utr_number: string; screenshot_url?: string; created_at: string }
+interface Deposit { id: string; user_id: string; amount: number; utr_number: string; status: string; screenshot_url?: string; created_at: string }
 interface ResetReq { id: string; email: string; note: string; created_at: string; status: string }
 interface SystemSettings {
     auto_activate_users: boolean; welcome_credits: number; maintenance_mode: boolean;
@@ -88,8 +88,8 @@ const AdminPage = () => {
     const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([])
     const [users, setUsers] = useState<UserRecord[]>([])
     const [deposits, setDeposits] = useState<Deposit[]>([])
-    const [allDeposits, setAllDeposits] = useState<any[]>([])
-    const [depositSummary, setDepositSummary] = useState<any>(null)
+    const [allDeposits, setAllDeposits] = useState<Deposit[]>([])
+    const [depositSummary, setDepositSummary] = useState<{ approved: number; pending: number; rejected: number; total_amount: number } | null>(null)
     const [resets, setResets] = useState<ResetReq[]>([])
     const [notifications, setNotifications] = useState<Notification[]>([])
     const [chatThreads, setChatThreads] = useState<ChatThread[]>([])
@@ -126,7 +126,7 @@ const AdminPage = () => {
     const [showGenPass, setShowGenPass] = useState<Record<string, boolean>>({})
 
     const isLoggedIn = !!adminToken
-    const authHeader = { headers: { 'Authorization': `Bearer ${adminToken}` } }
+    const authHeader = useMemo(() => ({ headers: { 'Authorization': `Bearer ${adminToken}` } }), [adminToken])
 
     // ── ADMIN LOGIN ──────────────────────────────────────────
     const handleAdminLogin = async () => {
@@ -138,51 +138,53 @@ const AdminPage = () => {
             setAdminToken(tok)
             localStorage.setItem('admin_token', tok)
             toast.success('Admin login successful!')
-        } catch (e: any) {
-            const m = e.response?.data?.detail || 'Login failed'
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            const m = error.response?.data?.detail || 'Login failed'
             setLoginError(m); toast.error(m)
         } finally { setLoginLoading(false) }
     }
 
     // ── FETCH HELPERS ────────────────────────────────────────
     const fetchStats = useCallback(async () => {
-        try { const r = await apiClient.get('/api/admin/stats', authHeader); setStats(r.data) } catch { }
-    }, [adminToken])
+        try { const r = await apiClient.get('/api/admin/stats', authHeader); setStats(r.data) } catch (err) { console.error('Failed to fetch stats', err) }
+    }, [authHeader])
 
     const fetchPending = useCallback(async () => {
         try {
             const r = await apiClient.get('/api/admin/users/pending', authHeader)
-            // API v2: key is "pending_users"
             setPendingUsers(r.data.pending_users || r.data.users || r.data || [])
-        } catch { }
-    }, [adminToken])
+        } catch (err) { console.error('Failed to fetch pending users', err) }
+    }, [authHeader])
 
     const fetchUsers = useCallback(async () => {
-        try { const r = await apiClient.get('/api/admin/users', authHeader); setUsers(r.data.users || r.data || []) } catch { }
-    }, [adminToken])
+        try { const r = await apiClient.get('/api/admin/users', authHeader); setUsers(r.data.users || r.data || []) } catch (err) { console.error('Failed to fetch users', err) }
+    }, [authHeader])
 
     const fetchDeposits = useCallback(async () => {
         try {
             const r = await apiClient.get('/api/admin/finance/pending-deposits', authHeader)
             setDeposits(r.data.pending_deposits || r.data.deposits || r.data || [])
-        } catch { }
-    }, [adminToken])
+        } catch (err) { console.error('Failed to fetch pending deposits', err) }
+    }, [authHeader])
 
     const fetchAllDeposits = useCallback(async () => {
         try {
             const r = await apiClient.get('/api/admin/finance/all-deposits', authHeader)
             setAllDeposits(r.data.deposits || [])
             setDepositSummary(r.data.summary || null)
-        } catch { }
-    }, [adminToken])
+        } catch (err) {
+            console.error('Failed to fetch all deposits', err)
+        }
+    }, [authHeader])
 
     const fetchResets = useCallback(async () => {
-        try { const r = await apiClient.get('/api/admin/requests/password-resets', authHeader); setResets(r.data.requests || []) } catch { }
-    }, [adminToken])
+        try { const r = await apiClient.get('/api/admin/requests/password-resets', authHeader); setResets(r.data.requests || []) } catch (err) { console.error('Failed to fetch resets', err) }
+    }, [authHeader])
 
     const fetchNotifications = useCallback(async () => {
-        try { const r = await apiClient.get('/api/admin/notifications', authHeader); setNotifications(r.data.notifications || r.data || []) } catch { }
-    }, [adminToken])
+        try { const r = await apiClient.get('/api/admin/notifications', authHeader); setNotifications(r.data.notifications || r.data || []) } catch (err) { console.error('Failed to fetch notifications', err) }
+    }, [authHeader])
 
     const fetchPrices = useCallback(async () => {
         try {
@@ -190,16 +192,16 @@ const AdminPage = () => {
             const pm = r.data.pricing_model || r.data
             setPrices(pm)
             setPricesDraft({ base_search_fee: pm.base_search_fee, fields: { ...pm.fields } })
-        } catch { }
-    }, [adminToken])
+        } catch (err) { console.error('Failed to fetch prices', err) }
+    }, [authHeader])
 
     const fetchSettings = useCallback(async () => {
         try {
             const r = await apiClient.get('/api/admin/settings', authHeader)
             const s = r.data.settings || r.data
             setSettings(s); setSettingsDraft(s)
-        } catch { }
-    }, [adminToken])
+        } catch (err) { console.error('Failed to fetch settings', err) }
+    }, [authHeader])
 
     const fetchChatThreads = useCallback(async () => {
         try {
@@ -227,7 +229,7 @@ const AdminPage = () => {
             }
             setChatThreads(threads)
         } catch (e) { console.error('Failed to fetch chat threads', e) }
-    }, [adminToken])
+    }, [authHeader])
 
     const sendAdminReply = async (userEmail: string) => {
         const text = chatReplyText[userEmail]?.trim()
@@ -241,43 +243,63 @@ const AdminPage = () => {
                 const hr = await apiClient.get(`/api/chat/admin/history/${userEmail}`, authHeader)
                 const msgs = Array.isArray(hr.data) ? hr.data : (hr.data.messages || [])
                 setChatThreads(prev => prev.map(t => t.user_email === userEmail ? { ...t, messages: msgs } : t))
-            } catch { }
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed to send reply') }
+            } catch (err) {
+                console.error('Failed to mark notification as read', err)
+            }
+        } catch (e: unknown) {
+            const error = e as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed to send reply')
+        }
         finally { setChatReplyLoading(prev => ({ ...prev, [userEmail]: false })) }
     }
 
     const fetchDdosStatus = useCallback(async () => {
-        try { const r = await apiClient.get('/api/admin/ddos/status', authHeader); setDdosStatus(r.data) } catch { }
-    }, [adminToken])
+        try { const r = await apiClient.get('/api/admin/ddos/status', authHeader); setDdosStatus(r.data) } catch (err) { console.error('Failed to fetch DDoS status', err) }
+    }, [authHeader])
 
     const fetchRequestLogs = useCallback(async () => {
-        try { const r = await apiClient.get('/api/admin/logs/requests', authHeader); setRequestLogs(r.data.logs || []) } catch { }
-    }, [adminToken])
+        try { const r = await apiClient.get('/api/admin/logs/requests', authHeader); setRequestLogs(r.data.logs || []) } catch (err) { console.error('Failed to fetch request logs', err) }
+    }, [authHeader])
 
     const fetchSystemLogs = useCallback(async () => {
-        try { const r = await apiClient.get('/api/admin/logs/system', authHeader); setSystemLogs(r.data.logs || r.data.output || '') } catch { }
-    }, [adminToken])
+        try { const r = await apiClient.get('/api/admin/logs/system', authHeader); setSystemLogs(r.data.logs || r.data.output || '') } catch (err) { console.error('Failed to fetch system logs', err) }
+    }, [authHeader])
 
     const fetchSysConfig = useCallback(async () => {
         try {
             const r = await apiClient.get('/api/admin/config', authHeader)
             setSysConfig(r.data); setSysConfigDraft(r.data)
-        } catch { }
-    }, [adminToken])
+        } catch (err) { console.error('Failed to fetch sys config', err) }
+    }, [authHeader])
 
     useEffect(() => {
         if (!isLoggedIn) return
         fetchStats(); fetchPending(); fetchUsers(); fetchDeposits(); fetchResets()
         fetchNotifications(); fetchPrices(); fetchSettings(); fetchChatThreads()
         fetchDdosStatus(); fetchRequestLogs(); fetchSystemLogs(); fetchSysConfig()
-    }, [isLoggedIn])
+    }, [isLoggedIn, fetchStats, fetchPending, fetchUsers, fetchDeposits, fetchResets, fetchNotifications, fetchPrices, fetchSettings, fetchChatThreads, fetchDdosStatus, fetchRequestLogs, fetchSystemLogs, fetchSysConfig])
 
     // ── ACTIONS ──────────────────────────────────────────────
     const activateUser = async (email: string) => {
-        try { await apiClient.post(`/api/admin/users/${email}/activate`, {}, authHeader); toast.success(`Activated ${email}`); fetchPending(); fetchUsers() } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        try {
+            await apiClient.post(`/api/admin/users/${email}/activate`, {}, authHeader);
+            toast.success(`Activated ${email}`);
+            fetchPending();
+            fetchUsers()
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
     const deactivateUser = async (email: string) => {
-        try { await apiClient.post(`/api/admin/users/${email}/deactivate`, {}, authHeader); toast.success(`Deactivated ${email}`); fetchUsers() } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        try {
+            await apiClient.post(`/api/admin/users/${email}/deactivate`, {}, authHeader);
+            toast.success(`Deactivated ${email}`);
+            fetchUsers()
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
 
     const handleAddCredits = async (e: React.FormEvent) => {
@@ -290,7 +312,10 @@ const AdminPage = () => {
             await apiClient.post(`/api/admin/users/${creditEmail}/credits/${endpoint}`, { amount: amt, reason: creditReason }, authHeader)
             toast.success(`Credits ${creditOp === 'add' ? 'added' : 'deducted'} for ${creditEmail}`)
             setCreditEmail(''); setCreditAmount(''); setCreditReason(''); fetchUsers()
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') } finally { setLoading(false) }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        } finally { setLoading(false) }
     }
 
     const handleDeposit = async (id: string, action: 'CREDIT' | 'REJECT', amount?: number) => {
@@ -299,7 +324,10 @@ const AdminPage = () => {
                 action === 'CREDIT' ? { action: 'CREDIT', amount } : { action: 'REJECT' }, authHeader)
             toast.success(`Deposit ${action === 'CREDIT' ? 'approved' : 'rejected'}`)
             fetchDeposits(); fetchAllDeposits()
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
 
     const generateAndResolve = async (req: ResetReq) => {
@@ -313,11 +341,21 @@ const AdminPage = () => {
             toast.success(`Password set for ${req.email} — copy and send it!`)
             // Update status locally instead of refetching (which would hide the card)
             setResets(prev => prev.map(r => r.id === req.id ? { ...r, status: 'resolved' } : r))
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
 
     const rejectReset = async (id: string) => {
-        try { await apiClient.post(`/api/admin/requests/password-resets/${id}/reject`, {}, authHeader); toast.success('Reset request rejected'); fetchResets() } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        try {
+            await apiClient.post(`/api/admin/requests/password-resets/${id}/reject`, {}, authHeader);
+            toast.success('Reset request rejected');
+            fetchResets()
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
 
     // Direct user password reset (Section 8)
@@ -327,7 +365,10 @@ const AdminPage = () => {
             await apiClient.post(`/api/admin/users/${resetEmail}/reset-password`, { new_temp_password: resetTempPass }, authHeader)
             toast.success(`Password set for ${resetEmail}! Send it to them.`)
             setResetEmail(''); setResetTempPass('')
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
 
     // DDoS Actions
@@ -337,7 +378,10 @@ const AdminPage = () => {
             await apiClient.post('/api/admin/ddos/block-ip', { ip }, authHeader)
             toast.success(`IP ${ip} blocked`)
             fetchDdosStatus()
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed to block IP') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed to block IP')
+        }
         finally { setDdosBlocking(false) }
     }
 
@@ -347,7 +391,10 @@ const AdminPage = () => {
             await apiClient.post('/api/admin/ddos/unblock-ip', { ip }, authHeader)
             toast.success(`IP ${ip} unblocked`)
             fetchDdosStatus()
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed to unblock IP') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed to unblock IP')
+        }
         finally { setDdosBlocking(false) }
     }
 
@@ -357,7 +404,10 @@ const AdminPage = () => {
             await apiClient.post('/api/admin/config', sysConfigDraft, authHeader)
             toast.success('System configuration updated')
             fetchSysConfig()
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed to update config') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed to update config')
+        }
     }
 
     // Custom price per user
@@ -369,7 +419,10 @@ const AdminPage = () => {
             await apiClient.post(`/api/admin/users/${customPriceEmail}/custom-price`, { discount_percent: discount }, authHeader)
             toast.success(`Custom price set for ${customPriceEmail}`)
             setCustomPriceEmail(''); setCustomDiscount('')
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
 
     // Update prices
@@ -379,7 +432,10 @@ const AdminPage = () => {
             await apiClient.post('/api/admin/config/prices/update', { pricing_model: pricesDraft }, authHeader)
             toast.success('Prices updated! Takes effect immediately.')
             fetchPrices()
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
 
     // Update settings
@@ -389,7 +445,10 @@ const AdminPage = () => {
             const newSettings = res.data.current_settings || res.data.settings || res.data
             if (newSettings) { setSettings(newSettings); setSettingsDraft(newSettings) }
             toast.success(`Settings updated: ${Object.keys(updates).join(', ')}`)
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
 
     const handleResetSettings = async () => {
@@ -398,14 +457,19 @@ const AdminPage = () => {
             const s = res.data.settings || res.data
             setSettings(s); setSettingsDraft(s)
             toast.success('Settings reset to factory defaults')
-        } catch (e: any) { toast.error(e.response?.data?.detail || 'Failed') }
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed')
+        }
     }
 
     const markNotificationRead = async (id: string) => {
         try {
             await apiClient.post(`/api/admin/notifications/${id}/read`, {}, authHeader)
             setNotifications(n => n.map(x => x.id === id ? { ...x, read: true } : x))
-        } catch { }
+        } catch (err) {
+            console.error('Failed to mark notification read', err)
+        }
     }
 
     const copyPass = async (pass: string, email: string) => {
@@ -1099,7 +1163,7 @@ const AdminPage = () => {
                                         <div key={field}>
                                             <label className="text-xs text-muted-foreground mb-1 block capitalize">{field} (₹)</label>
                                             <Input type="number" min="0" step="0.1"
-                                                value={(pricesDraft.fields as any)?.[field] ?? price}
+                                                value={(pricesDraft.fields as Record<string, number>)?.[field] ?? price}
                                                 onChange={e => setPricesDraft(p => ({ ...p, fields: { ...(p.fields || {}), [field]: parseFloat(e.target.value) } }))} />
                                         </div>
                                     ))}

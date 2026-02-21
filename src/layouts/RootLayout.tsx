@@ -30,7 +30,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
                 </AnimatePresence>
             </main>
 
-            <Footer />
+            {currentPage === 'home' && <Footer />}
         </div>
     )
 }

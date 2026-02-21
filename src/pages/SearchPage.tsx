@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useForm } from 'react-hook-form'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '@/store/authStore'
@@ -7,7 +8,10 @@ import apiClient from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, Search, User, Users, Home, Mail, Phone, Calendar, Wifi, MapPin, Hash, CheckSquare, Square, AlertCircle, SearchX, IndianRupee } from 'lucide-react'
+import {
+    Loader2, Search, User, Users, Home, Mail, Phone, Calendar, Wifi, MapPin,
+    Hash, CheckSquare, Square, AlertCircle, SearchX, IndianRupee, Settings2, X
+} from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -32,10 +36,17 @@ const SearchPage = () => {
     const { navigate } = useAppStore()
     const { register, handleSubmit, formState: { errors } } = useForm()
     const [loading, setLoading] = useState(false)
-    const [result, setResult] = useState<any>(null)
+    const [result, setResult] = useState<{
+        data: Record<string, unknown> | Record<string, unknown>[];
+        billing?: { total_deducted?: number; field_charges?: Record<string, number> };
+        wallet_remaining?: number;
+        response_time?: number;
+        status?: string;
+    } | null>(null)
     const [error, setError] = useState('')
     const [selectedFields, setSelectedFields] = useState<string[]>(FIELD_OPTIONS.map(f => f.key))
     const [noResults, setNoResults] = useState(false)
+    const [showFieldsModal, setShowFieldsModal] = useState(false)
 
     const allSelected = selectedFields.length === FIELD_OPTIONS.length
 
@@ -49,8 +60,6 @@ const SearchPage = () => {
         setSelectedFields(allSelected ? [FIELD_OPTIONS[0].key] : FIELD_OPTIONS.map(f => f.key))
     }
 
-
-
     const estimatedCost = () => {
         const fieldTotal = selectedFields.reduce((sum, key) => {
             const f = FIELD_OPTIONS.find(o => o.key === key)
@@ -59,7 +68,7 @@ const SearchPage = () => {
         return BASE_FEE + fieldTotal
     }
 
-    const onSearch = async (data: any) => {
+    const onSearch = async (data: Record<string, unknown>) => {
         if (!user) { navigate('auth'); return }
         setLoading(true)
         setError('')
@@ -69,13 +78,10 @@ const SearchPage = () => {
 
         try {
             const res = await apiClient.post('/api/user/search', { mobile: data.mobile, requested_fields })
-
-            // API v2.1: data is now an array []
             const responseData = res.data
 
             if (responseData.status === 'no_results' || !responseData.data || (Array.isArray(responseData.data) && responseData.data.length === 0)) {
                 setNoResults(true)
-                // Use optional chaining for billing
                 const charged = responseData.billing?.total_deducted?.toFixed(2) || '1.00'
                 toast.info('No record found for this mobile number', { description: `Charged: ₹${charged} (base fee only)` })
             } else {
@@ -84,14 +90,14 @@ const SearchPage = () => {
                 toast.success('Record found!', { description: `Charged: ₹${charged}` })
             }
 
-            // Refresh balance
             if (user) {
                 apiClient.get('/api/user/profile').then(r => setUser(r.data)).catch(() => { })
             }
-        } catch (err: any) {
-            console.error(err)
-            const detail = err.response?.data?.detail || err.response?.data?.msg
-            if (err.response?.status === 402) {
+        } catch (err: unknown) {
+            const error = err as { response?: { status?: number, data?: { detail?: string, msg?: string } } };
+            console.error(error)
+            const detail = error.response?.data?.detail || error.response?.data?.msg
+            if (error.response?.status === 402) {
                 const m = 'Insufficient credits. Please top up your API credits.'
                 setError(m); toast.error(m)
             } else {
@@ -103,7 +109,6 @@ const SearchPage = () => {
         }
     }
 
-    // Helper to treat data as array
     const resultList = Array.isArray(result?.data) ? result?.data : (result?.data ? [result.data] : [])
     const billing = result?.billing || {}
 
@@ -111,69 +116,23 @@ const SearchPage = () => {
         <div className="space-y-8 max-w-4xl mx-auto">
             <Helmet><title>Search | Go-Biz</title></Helmet>
 
-            <div>
-                <h1 className="text-3xl font-bold gradient-text">Data Validation API</h1>
-                <p className="text-muted-foreground mt-1">Lookup telecom & profile data by mobile number</p>
-            </div>
-
-            {/* Balance Banner */}
-            {user && (
-                <div className="flex items-center justify-between glass rounded-xl px-5 py-3">
-                    <div className="flex items-center gap-2 text-sm">
-                        <IndianRupee className="w-4 h-4 text-primary" />
-                        <span className="text-muted-foreground">API Credits:</span>
-                        <span className="font-bold text-lg text-primary">₹{user.credits?.toFixed(2)}</span>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                        Est. cost: <span className="font-semibold text-foreground">₹{estimatedCost().toFixed(2)}</span>
-                    </div>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold gradient-text">Data Validation API</h1>
+                    <p className="text-muted-foreground mt-1">Lookup telecom & profile data by mobile number</p>
                 </div>
-            )}
-
-            {/* Field Selector */}
-            <Card className="glass border-border/50">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center justify-between">
-                        Select Data Fields
-                        <button onClick={toggleAll} className="flex items-center gap-1.5 text-sm font-normal text-primary hover:text-primary/80 transition-colors">
-                            {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                            <span className="hidden sm:inline">{allSelected ? 'Deselect All' : 'Select All'}</span>
-                            <span className="sm:hidden">{allSelected ? 'None' : 'All'}</span>
-                        </button>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2">
-                        {FIELD_OPTIONS.map(f => {
-                            const selected = selectedFields.includes(f.key)
-                            return (
-                                <button
-                                    key={f.key}
-                                    onClick={() => toggleField(f.key)}
-                                    className={cn(
-                                        "flex flex-col items-center gap-1 p-2 sm:p-3 rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-medium transition-all text-center",
-                                        selected
-                                            ? "border-primary bg-primary/10 text-primary shadow-sm"
-                                            : "border-border/50 bg-muted/30 text-muted-foreground hover:border-border"
-                                    )}
-                                >
-                                    <f.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                    <span className="truncate w-full">{f.label}</span>
-                                    <span className="text-[8px] sm:text-[10px] opacity-70">+₹{f.price.toFixed(0)}</span>
-                                </button>
-                            )
-                        })}
+                {user && (
+                    <div className="flex items-center gap-2 glass px-4 py-2 rounded-xl text-sm self-end md:self-auto">
+                        <IndianRupee className="w-4 h-4 text-primary" />
+                        <span className="font-bold text-primary">₹{user.credits?.toFixed(2)}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-3">
-                        Base fee: ₹{BASE_FEE} + selected fields (charged only for found data)
-                    </p>
-                </CardContent>
-            </Card>
+                )}
+            </div>
 
             {/* Search Form */}
             <form onSubmit={handleSubmit(onSearch)} className="relative z-10">
                 <div className="flex flex-col sm:flex-row gap-3 p-2 sm:p-1 rounded-2xl sm:rounded-xl bg-card/30 backdrop-blur-sm border border-primary/20 shadow-[0_0_15px_-3px_rgba(var(--primary),0.3)] hover:shadow-[0_0_20px_-3px_rgba(var(--primary),0.5)] transition-shadow duration-300">
-                    <div className="flex-1 relative">
+                    <div className="flex-1 relative flex items-center">
                         <Input
                             placeholder="Enter 10-digit mobile number..."
                             className="h-12 sm:h-14 text-base sm:text-lg border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-4"
@@ -183,6 +142,15 @@ const SearchPage = () => {
                                 pattern: /^[6-9]\d{9}$/
                             })}
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowFieldsModal(true)}
+                            className="mr-3 p-2 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors flex items-center gap-2"
+                            title="Field Selection"
+                        >
+                            <span className="text-xs font-medium hidden lg:inline">Fields ({selectedFields.length})</span>
+                            <Settings2 className="w-5 h-5" />
+                        </button>
                     </div>
                     <Button type="submit" className="h-12 sm:h-14 px-8 glow-primary rounded-xl sm:rounded-lg text-base w-full sm:w-auto" disabled={loading}>
                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5 sm:mr-2" />}
@@ -193,6 +161,83 @@ const SearchPage = () => {
                     <p className="text-destructive text-sm mt-2 ml-1">Please enter a valid 10-digit Indian mobile number.</p>
                 )}
             </form>
+            {createPortal(
+                <AnimatePresence>
+                    {showFieldsModal && (
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setShowFieldsModal(false)}
+                                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                            />
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                                className="relative w-full max-w-lg z-[210]"
+                            >
+                                <Card className="glass border-primary/30 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)]">
+                                    <CardHeader className="pb-3 border-b border-border/50">
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle className="text-lg flex items-center gap-2">
+                                                <Settings2 className="w-5 h-5 text-primary" /> Select Data Fields
+                                            </CardTitle>
+                                            <button onClick={() => setShowFieldsModal(false)} className="p-1 hover:bg-muted rounded-md transition-colors">
+                                                <X className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center justify-between mt-4">
+                                            <span className="text-xs text-muted-foreground">Estimated cost based on found data</span>
+                                            <button onClick={toggleAll} className="flex items-center gap-1.5 text-xs font-bold text-primary hover:bg-primary/10 px-2 py-1 rounded-md transition-all">
+                                                {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                                                {allSelected ? 'Deselect All' : 'Select All'}
+                                            </button>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="py-4">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                            {FIELD_OPTIONS.map(f => {
+                                                const selected = selectedFields.includes(f.key)
+                                                return (
+                                                    <button
+                                                        key={f.key}
+                                                        onClick={() => toggleField(f.key)}
+                                                        className={cn(
+                                                            "flex items-center gap-2 p-3 rounded-xl border text-xs font-medium transition-all",
+                                                            selected
+                                                                ? "border-primary bg-primary/10 text-primary shadow-sm"
+                                                                : "border-border/50 bg-muted/30 text-muted-foreground hover:border-border"
+                                                        )}
+                                                    >
+                                                        <f.icon className="w-4 h-4 shrink-0" />
+                                                        <div className="flex flex-col items-start min-w-0">
+                                                            <span className="truncate w-full">{f.label}</span>
+                                                            <span className="text-[10px] opacity-70">₹{f.price.toFixed(0)}</span>
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                        <div className="mt-6 p-3 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between">
+                                            <div className="text-sm">
+                                                <span className="text-muted-foreground">Est. Max Cost:</span>
+                                                <span className="font-bold text-foreground ml-2">₹{estimatedCost().toFixed(2)}</span>
+                                            </div>
+                                            <Button size="sm" onClick={() => setShowFieldsModal(false)} className="glow-primary">Apply Selection</Button>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground mt-3 text-center">
+                                            Base fee of ₹1 is always charged. Per-field prices are only deducted if data exists.
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
             {/* Error */}
             {error && (
@@ -202,9 +247,9 @@ const SearchPage = () => {
                     className="flex items-center gap-3 p-4 rounded-xl bg-destructive/15 border border-destructive/40 text-destructive"
                 >
                     <AlertCircle className="w-5 h-5 shrink-0" />
-                    <span>{error}</span>
+                    <span className="flex-1">{error}</span>
                     {error.includes('credit') && (
-                        <Button size="sm" variant="outline" className="ml-auto border-destructive/50" onClick={() => navigate('dashboard')}>
+                        <Button size="sm" variant="outline" className="ml-auto border-destructive/50" onClick={() => navigate('recharge')}>
                             Add Credits
                         </Button>
                     )}
@@ -264,11 +309,11 @@ const SearchPage = () => {
                                     </div>
                                     <div className="flex items-center gap-2 text-sm">
                                         <span className="text-muted-foreground">Remaining:</span>
-                                        <span className="font-semibold">₹{result.wallet_remaining?.toFixed(2)}</span>
+                                        <span className="font-semibold">₹{result?.wallet_remaining?.toFixed(2)}</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-sm">
                                         <span className="text-muted-foreground">Time:</span>
-                                        <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-foreground">{result.response_time ? `${(result.response_time * 1000).toFixed(0)}ms` : 'N/A'}</span>
+                                        <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded text-foreground">{result?.response_time ? `${(result.response_time * 1000).toFixed(0)}ms` : 'N/A'}</span>
                                     </div>
                                 </div>
 
@@ -284,22 +329,22 @@ const SearchPage = () => {
                             </CardContent>
                         </Card>
 
-                        {/* Result Items - Perfect ListView */}
+                        {/* Result Items */}
                         <div className="space-y-4">
-                            {resultList.map((item: any, idx: number) => (
+                            {resultList.map((item: Record<string, unknown>, idx: number) => (
                                 <Card key={`${item.id}-${idx}`} className="glass border-primary/20 overflow-hidden shadow-lg hover:shadow-primary/5 transition-shadow">
                                     <div className="bg-primary/5 px-4 py-2 border-b border-primary/10 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary text-primary-foreground uppercase tracking-wider">Result #{idx + 1}</span>
-                                            {item.carrier && <span className="text-xs text-muted-foreground border border-border px-1.5 rounded">{item.carrier}</span>}
-                                            {item.circle && <span className="text-xs text-muted-foreground border border-border px-1.5 rounded">{item.circle}</span>}
+                                            {typeof item.carrier === 'string' && <span className="text-xs text-muted-foreground border border-border px-1.5 rounded">{item.carrier}</span>}
+                                            {typeof item.circle === 'string' && <span className="text-xs text-muted-foreground border border-border px-1.5 rounded">{item.circle}</span>}
                                         </div>
-                                        <span className="text-sm font-bold text-primary font-mono tracking-wide">{item.mobile}</span>
+                                        <span className="text-sm font-bold text-primary font-mono tracking-wide">{String(item.mobile || '')}</span>
                                     </div>
                                     <CardContent className="p-0">
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border/50">
                                             {selectedFields.map(key => {
-                                                if (['carrier', 'circle'].includes(key)) return null // Shown in header
+                                                if (['carrier', 'circle'].includes(key)) return null
                                                 const field = FIELD_OPTIONS.find(f => f.key === key)
                                                 const value = item[key]
                                                 if (!field || value === undefined || value === null || value === '') return null
@@ -326,8 +371,6 @@ const SearchPage = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
-
-
         </div>
     )
 }

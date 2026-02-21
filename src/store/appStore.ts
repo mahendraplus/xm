@@ -3,7 +3,10 @@ import { persist } from 'zustand/middleware'
 
 export type Theme = 'dark' | 'light' | 'system'
 export type AccentColor = 'blue' | 'purple' | 'green' | 'orange' | 'rose' | 'cyan'
-export type Page = 'home' | 'auth' | 'dashboard' | 'search' | 'history' | 'admin' | 'forgot-password' | 'api-docs' | 'chat' | 'terms' | 'privacy' | 'refund' | 'contact' | '404'
+export type DashboardTab = 'overview' | 'recharge' | 'api'
+export type AuthMode = 'login' | 'register'
+export type ProfileTab = 'info' | 'settings' | 'security'
+export type Page = 'home' | 'auth' | 'dashboard' | 'search' | 'history' | 'admin' | 'forgot-password' | 'api-docs' | 'chat' | 'terms' | 'privacy' | 'refund' | 'contact' | 'overview' | 'recharge' | 'profile' | '404'
 
 const ACCENT_COLORS: Record<AccentColor, { hue: number; sat: number; light: number }> = {
     blue: { hue: 217, sat: 91, light: 60 },
@@ -18,17 +21,23 @@ interface AppState {
     theme: Theme
     accentColor: AccentColor
     currentPage: Page
+    dashboardTab: DashboardTab
+    authMode: AuthMode
     setTheme: (theme: Theme) => void
     setAccentColor: (color: AccentColor) => void
-    navigate: (page: Page) => void
+    setDashboardTab: (tab: DashboardTab) => void
+    setAuthMode: (mode: AuthMode) => void
+    navigate: (page: Page, options?: { tab?: DashboardTab; mode?: AuthMode }) => void
 }
 
 export const useAppStore = create<AppState>()(
     persist(
-        (set, get) => ({
+        (set) => ({
             theme: 'dark',
             accentColor: 'blue',
             currentPage: 'home',
+            dashboardTab: 'overview',
+            authMode: 'login',
             setTheme: (theme) => {
                 set({ theme })
                 applyTheme(theme)
@@ -37,12 +46,16 @@ export const useAppStore = create<AppState>()(
                 set({ accentColor: color })
                 applyAccentColor(color)
             },
-            navigate: (page) => {
-                const prev = get().currentPage
-                if (prev === page) return
-                set({ currentPage: page })
+            setDashboardTab: (dashboardTab) => set({ dashboardTab }),
+            setAuthMode: (authMode) => set({ authMode }),
+            navigate: (page, options) => {
+                const updates: Partial<AppState> = { currentPage: page }
+                if (options?.tab) updates.dashboardTab = options.tab
+                if (options?.mode) updates.authMode = options.mode
+
+                set(updates)
                 // Push state to browser history for back/forward support
-                window.history.pushState({ page }, '', '')
+                window.history.pushState({ page, ...options }, '', '')
             },
         }),
         {

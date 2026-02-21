@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import apiClient from '@/api/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 interface HistoryItem {
-    id?: string
+    id: string
     mobile: string
     mobile_mask?: string
     result_count: number
@@ -33,16 +33,16 @@ const HistoryPage = () => {
     const [currentPage, setCurrentPage] = useState(1)
     const itemsPerPage = 20
 
-    const fetchHistory = () => {
+    const fetchHistory = useCallback(() => {
         if (!token) { navigate('auth'); return }
         setLoading(true)
         apiClient.get('/api/user/history')
             .then(res => setHistory(res.data.history || []))
             .catch(() => toast.error('Failed to load history'))
             .finally(() => setLoading(false))
-    }
+    }, [token, navigate])
 
-    useEffect(() => { fetchHistory() }, [])
+    useEffect(() => { fetchHistory() }, [fetchHistory])
 
     const deleteItem = async (id?: string) => {
         if (!id) return

@@ -39,7 +39,7 @@ const ChatPage = () => {
             const res = await apiClient.get('/api/chat/history')
             const data = Array.isArray(res.data) ? res.data : (res.data.messages || res.data.history || [])
             setMessages(data)
-        } catch (err: any) {
+        } catch (err: unknown) {
             if (showLoader) {
                 console.error('Failed to load chat history', err)
             }
@@ -57,7 +57,7 @@ const ChatPage = () => {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current)
         }
-    }, [token])
+    }, [token, navigate])
 
     useEffect(() => {
         scrollToBottom()
@@ -72,8 +72,9 @@ const ChatPage = () => {
             setText('')
             toast.success('Message sent!')
             await fetchMessages(false)
-        } catch (err: any) {
-            toast.error(err.response?.data?.detail || 'Failed to send message')
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { detail?: string } } };
+            toast.error(error.response?.data?.detail || 'Failed to send message')
         } finally {
             setSending(false)
         }

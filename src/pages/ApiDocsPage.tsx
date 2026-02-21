@@ -216,9 +216,10 @@ const EndpointCard = ({ ep }: { ep: Endpoint }) => {
             const elapsed = Date.now() - startTime
             setResponse(`// ${res.status} ${res.statusText} (${elapsed}ms)\n${JSON.stringify(json, null, 2)}`)
             toast.success(`${ep.label}: ${res.status}`)
-        } catch (err: any) {
-            setResponse(`// Error\n${err.message}`)
-            toast.error(`Test failed: ${err.message}`)
+        } catch (err: unknown) {
+            const error = err as Error
+            setResponse(`// Error\n${error.message}`)
+            toast.error(`Test failed: ${error.message}`)
         } finally {
             setTesting(false)
         }
@@ -319,7 +320,7 @@ const ApiDocsPage = () => {
             toast.error('Please sign in to view API documentation')
             navigate('auth')
         }
-    }, [token])
+    }, [token, user, navigate])
 
     if (!token || !user) return null
 

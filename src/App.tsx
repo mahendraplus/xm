@@ -8,6 +8,9 @@ import RootLayout from '@/layouts/RootLayout'
 
 // Pages
 import LandingPage from '@/pages/LandingPage'
+import OverviewPage from '@/pages/OverviewPage'
+import RechargePage from '@/pages/RechargePage'
+import ProfilePage from '@/pages/ProfilePage'
 import Dashboard from '@/pages/Dashboard'
 import AuthPage from '@/pages/AuthPage'
 import SearchPage from '@/pages/SearchPage'
@@ -21,9 +24,10 @@ import TermsPage from '@/pages/TermsPage'
 import PrivacyPolicyPage from '@/pages/PrivacyPolicyPage'
 import RefundPolicyPage from '@/pages/RefundPolicyPage'
 import ContactUsPage from '@/pages/ContactUsPage'
+import BottomNav from '@/components/BottomNav'
 
 function App() {
-  const { theme, accentColor, currentPage } = useAppStore()
+  const { theme, accentColor, currentPage, navigate } = useAppStore()
   const { token, setUser, logout } = useAuthStore()
 
   // Apply theme + accent on mount and changes
@@ -40,14 +44,22 @@ function App() {
   useEffect(() => {
     if (token) {
       apiClient.get('/api/user/profile').then(res => setUser(res.data)).catch(() => logout())
+
+      // Auto-redirect from home to search if logged in
+      if (currentPage === 'home') {
+        navigate('search')
+      }
     }
-  }, []) // intentionally only on mount
+  }, [token, setUser, logout, currentPage, navigate])
 
   const renderPage = () => {
     switch (currentPage) {
       case 'home': return <LandingPage />
       case 'auth': return <AuthPage />
       case 'dashboard': return <Dashboard />
+      case 'overview': return <OverviewPage />
+      case 'recharge': return <RechargePage />
+      case 'profile': return <ProfilePage />
       case 'search': return <SearchPage />
       case 'history': return <HistoryPage />
       case 'admin': return <AdminPage />
@@ -66,6 +78,7 @@ function App() {
     <HelmetProvider>
       <RootLayout>
         {renderPage()}
+        <BottomNav />
       </RootLayout>
       <Toaster
         position="bottom-center"

@@ -32,6 +32,32 @@
   --scrollbar-thumb-hover: hsl(217 91% 50%);
   --blob1: hsla(217, 91%, 60%, 0.12);
   --blob2: hsla(260, 70%, 50%, 0.08);
+
+  .glass-modern {
+    background: rgba(15, 15, 20, 0.4);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Pulse animation for premium feel */
+  @keyframes soft-pulse {
+
+    0%,
+    100% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1.02);
+    }
+  }
+
+  .premium-pulse {
+    animation: soft-pulse 4s infinite ease-in-out;
+  }
 }
 
 /* ─── LIGHT THEME ─── */
@@ -61,6 +87,13 @@
   --scrollbar-thumb-hover: hsl(217 91% 50%);
   --blob1: hsla(217, 91%, 60%, 0.05);
   --blob2: hsla(260, 70%, 50%, 0.03);
+
+  .glass-modern {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
 }
 
 /* ─── BASE RESET ─── */
