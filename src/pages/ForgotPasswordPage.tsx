@@ -102,8 +102,8 @@ const ForgotPasswordPage = () => {
                                     <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Email Identity</label>
                                     <Input
                                         className="h-12 bg-white/5 border-white/10 focus:border-primary/50"
-                                        type="email"
-                                        placeholder="Your registered email address"
+                                        type="text"
+                                        placeholder="Your registered email address (or Admin ID)"
                                         value={email}
                                         onChange={e => setEmail(e.target.value)}
                                         required

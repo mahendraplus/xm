@@ -1,11 +1,33 @@
 import { Rocket, Mail, Phone, MapPin, MessageCircle } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
+import { useState, useEffect } from 'react'
 
 const APP_VERSION = 'v3.0'
-const BUILD_DATE = '20/02/2026, 20:35:00'
 
 const Footer = () => {
     const { navigate } = useAppStore()
+    const [buildDate, setBuildDate] = useState('')
+
+    useEffect(() => {
+        const updateTime = () => {
+            const now = new Date()
+            const dateStr = now.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            })
+            const timeStr = now.toLocaleTimeString('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            })
+            setBuildDate(`${dateStr}, ${timeStr}`)
+        }
+        updateTime()
+        const timer = setInterval(updateTime, 1000)
+        return () => clearInterval(timer)
+    }, [])
 
     return (
         <footer className="border-t border-border/30 bg-card/30 backdrop-blur-lg mt-auto">
@@ -87,7 +109,7 @@ const Footer = () => {
                         © {new Date().getFullYear()} Go-Biz. All rights reserved.
                     </p>
                     <p className="text-[10px] text-muted-foreground/60 font-mono">
-                        System {APP_VERSION} • Last Updated: {BUILD_DATE}
+                        System {APP_VERSION} • Last Updated: {buildDate}
                     </p>
                 </div>
             </div>
