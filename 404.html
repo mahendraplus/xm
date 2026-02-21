@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go-Biz | Page Not Found</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: hsl(220, 30%, 6%);
+            color: hsl(213, 31%, 91%);
+            font-family: 'Inter', system-ui, sans-serif;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            z-index: 10;
+            position: relative;
+        }
+        .code {
+            font-size: 8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(260, 70%, 70%));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+        .title {
+            font-size: 1.25rem;
+            color: hsl(215, 20%, 55%);
+            margin-bottom: 0.25rem;
+        }
+        .subtitle {
+            font-size: 0.875rem;
+            color: hsl(215, 20%, 40%);
+            margin-bottom: 2rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: hsl(217, 91%, 60%);
+            color: hsl(222, 47%, 11%);
+            box-shadow: 0 0 24px hsla(217, 91%, 60%, 0.35);
+        }
+        .btn-primary:hover {
+            background: hsl(217, 91%, 55%);
+            box-shadow: 0 0 32px hsla(217, 91%, 60%, 0.5);
+        }
+        .btn-outline {
+            background: transparent;
+            color: hsl(213, 31%, 91%);
+            border: 1px solid hsl(217, 25%, 16%);
+            margin-left: 0.75rem;
+        }
+        .btn-outline:hover {
+            background: hsl(217, 25%, 12%);
+        }
+        .blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.4;
+            animation: pulse 4s ease-in-out infinite alternate;
+        }
+        .blob-1 {
+            width: 400px; height: 400px;
+            background: hsla(217, 91%, 60%, 0.15);
+            top: 20%; left: 30%;
+        }
+        .blob-2 {
+            width: 300px; height: 300px;
+            background: hsla(260, 70%, 50%, 0.1);
+            bottom: 20%; right: 20%;
+        }
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.15); }
+        }
+    </style>
+    <script>
+        // GitHub Pages SPA redirect: preserves the path for the SPA router
+        (function() {
+            var path = window.location.pathname;
+            if (path !== '/xm/' && path !== '/xm/index.html') {
+                sessionStorage.setItem('gh-pages-redirect', path);
+                window.location.replace('/xm/');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="container">
+        <div class="code">404</div>
+        <p class="title">Page Not Found</p>
+        <p class="subtitle">The page you're looking for doesn't exist or has been moved.</p>
+        <div>
+            <a href="/xm/" class="btn btn-primary">← Go Home</a>
+            <a href="/xm/#auth" class="btn btn-outline" onclick="sessionStorage.setItem('gh-page','auth')">Login</a>
+        </div>
+    </div>
+</body>
+</html>
