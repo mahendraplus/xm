@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, CheckCircle, Database, Shield, Zap, Loader2, ShieldCheck, Timer, Globe, Lock } from 'lucide-react'
+import { CheckCircle, Database, Shield, Zap, Loader2, ShieldCheck, Timer, Globe, Lock, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Helmet } from 'react-helmet-async'
 import apiClient from '@/api/client'
@@ -125,17 +125,18 @@ const LandingPage = () => {
                         className="flex flex-wrap items-center justify-center gap-6"
                     >
                         <Button size="lg" className="group relative overflow-hidden text-lg h-14 px-10 rounded-2xl glow-primary" onClick={() => navigate('auth', { mode: 'register' })}>
-                            <span className="relative z-10 flex items-center gap-2">
-                                Register <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                            <span className="relative z-10 flex items-center gap-2 text-lg font-black tracking-wide">
+                                <Rocket className="w-5 h-5 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
+                                Get Started Now
                             </span>
                             <motion.div
-                                className="absolute inset-0 bg-white/10"
+                                className="absolute inset-0 bg-foreground/10"
                                 initial={{ x: '-100%' }}
                                 whileHover={{ x: '100%' }}
                                 transition={{ duration: 0.6 }}
                             />
                         </Button>
-                        <Button variant="outline" size="lg" className="h-14 px-10 rounded-2xl border-white/10 hover:bg-white/5 backdrop-blur-sm" onClick={() => {
+                        <Button variant="outline" size="lg" className="h-14 px-10 rounded-2xl border-border hover:bg-foreground/5 backdrop-blur-sm" onClick={() => {
                             const el = document.getElementById('features')
                             el?.scrollIntoView({ behavior: 'smooth' })
                         }}>
@@ -162,7 +163,7 @@ const LandingPage = () => {
                                 whileInView={{ opacity: 1, y: 0 }}
                                 transition={{ delay: idx * 0.1 }}
                                 viewport={{ once: true }}
-                                className="p-6 md:p-8 rounded-3xl glass-modern border-white/5 text-center group hover:border-primary/30 transition-all duration-500"
+                                className="p-6 md:p-8 rounded-3xl glass-modern border-foreground/5 text-center group hover:border-primary/30 transition-all duration-500"
                             >
                                 <stat.icon className={cn("w-6 h-6 md:w-8 md:h-8 mx-auto mb-4 opacity-50 group-hover:opacity-100 transition-opacity", stat.color)} />
                                 <div className="text-2xl md:text-3xl font-black mb-1 group-hover:scale-110 transition-transform duration-500">{stat.value}</div>
@@ -199,7 +200,7 @@ const LandingPage = () => {
                                         className="relative pl-12"
                                     >
                                         <div className="absolute left-[21px] top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary border-4 border-background" />
-                                        <div className="p-4 rounded-2xl glass-modern border-white/5 flex items-center justify-between group hover:border-primary/20 transition-colors">
+                                        <div className="p-4 rounded-2xl glass-modern border-foreground/5 flex items-center justify-between group hover:border-primary/20 transition-colors">
                                             <div className="space-y-1">
                                                 <p className="font-mono text-sm font-bold text-primary">{r.mobile_mask}</p>
                                                 <p className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -214,7 +215,7 @@ const LandingPage = () => {
                                         </div>
                                     </motion.div>
                                 )) : (
-                                    <div className="p-12 text-center glass-modern rounded-3xl text-muted-foreground text-sm border-dashed border-white/10">
+                                    <div className="p-12 text-center glass-modern rounded-3xl text-muted-foreground text-sm border-dashed border-foreground/10">
                                         Synchronizing global nodes...
                                     </div>
                                 )}
@@ -239,7 +240,7 @@ const LandingPage = () => {
                                         whileInView={{ opacity: 1, scale: 1 }}
                                         viewport={{ once: true }}
                                         transition={{ delay: index * 0.1 }}
-                                        className="p-8 rounded-[2rem] glass-modern border-white/5 hover:border-primary/20 group transition-all"
+                                        className="p-8 rounded-[2rem] glass-modern border-foreground/5 hover:border-primary/20 group transition-all"
                                     >
                                         <div className="bg-primary/10 w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
                                             <feature.icon className="w-7 h-7 text-primary" />

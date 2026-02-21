@@ -88,7 +88,7 @@ const ForgotPasswordPage = () => {
                     <p className="text-muted-foreground font-medium">Reset your secure access to Go-Biz Tools</p>
                 </div>
 
-                <Card className="glass-modern border-white/10 shadow-2xl">
+                <Card className="glass-modern border-foreground/10 shadow-2xl">
                     <CardHeader className="text-center pt-8">
                         <CardTitle className="text-2xl font-bold">Secure Reset</CardTitle>
                         <CardDescription className="text-base mt-2">
@@ -101,7 +101,7 @@ const ForgotPasswordPage = () => {
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Email Identity</label>
                                     <Input
-                                        className="h-12 bg-white/5 border-white/10 focus:border-primary/50"
+                                        className="h-12 bg-foreground/5 border-foreground/10 focus:border-primary/50"
                                         type="text"
                                         placeholder="Your registered email address (or Admin ID)"
                                         value={email}
@@ -112,7 +112,7 @@ const ForgotPasswordPage = () => {
                                 <div className="space-y-2">
                                     <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Identity Evidence (Note)</label>
                                     <Input
-                                        className="h-12 bg-white/5 border-white/10 focus:border-primary/50"
+                                        className="h-12 bg-foreground/5 border-foreground/10 focus:border-primary/50"
                                         type="text"
                                         placeholder="e.g. Last transaction ID or Lost phone"
                                         value={note}
@@ -145,11 +145,11 @@ const ForgotPasswordPage = () => {
                                     <p className="text-green-400 font-bold text-lg">Request Logged</p>
                                     <p className="text-muted-foreground leading-relaxed">{msg}</p>
                                 </div>
-                                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-sm text-muted-foreground text-left flex gap-3">
+                                <div className="p-4 rounded-2xl bg-foreground/5 border border-foreground/10 text-sm text-muted-foreground text-left flex gap-3">
                                     <ShieldAlert className="w-6 h-6 text-yellow-500 shrink-0" />
                                     <span>Security verification is required. Your new password will be delivered via your encrypted contact channel once verified.</span>
                                 </div>
-                                <Button variant="secondary" onClick={checkStatus} disabled={loading} className="w-full h-12 rounded-xl border border-white/10">
+                                <Button variant="secondary" onClick={checkStatus} disabled={loading} className="w-full h-12 rounded-xl border border-foreground/10">
                                     {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Refresh Request Status'}
                                 </Button>
                                 {resetStatus && (
@@ -164,10 +164,15 @@ const ForgotPasswordPage = () => {
                             </div>
                         )}
 
-                        <div className="text-center">
-                            <button onClick={() => navigate('auth')}
-                                className="text-sm font-medium text-muted-foreground hover:text-primary transition-all underline underline-offset-4">
-                                ← Return to Login
+                        <div className="mt-8 pt-6 border-t border-foreground/10 flex flex-col items-center">
+                            <button
+                                onClick={() => navigate('auth')}
+                                className="group w-full p-4 rounded-2xl bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 transition-all flex items-center justify-between"
+                            >
+                                <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Remembered your password?</span>
+                                <span className="text-sm font-bold text-primary group-hover:text-primary/80 transition-colors flex items-center gap-1">
+                                    <span className="text-lg leading-none mr-1">←</span> Return to Login
+                                </span>
                             </button>
                         </div>
                     </CardContent>

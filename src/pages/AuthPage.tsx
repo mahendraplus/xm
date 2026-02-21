@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useAppStore } from '@/store/appStore'
 import apiClient from '@/api/client'
 import { Helmet } from 'react-helmet-async'
-import { Loader2, Rocket } from 'lucide-react'
+import { Loader2, Rocket, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 
 const AuthPage = () => {
@@ -54,7 +54,7 @@ const AuthPage = () => {
     return (
         <div className="flex items-center justify-center min-h-screen relative overflow-hidden px-4">
             <Helmet>
-                <title>{isRegister ? 'Register' : 'Login'} | Go-Biz</title>
+                <title>{isRegister ? 'Get Started' : 'Login'} | Go-Biz</title>
             </Helmet>
 
             {/* Background Decorations */}
@@ -94,7 +94,7 @@ const AuthPage = () => {
                     <p className="text-muted-foreground font-medium">Empowering the next generation of data validation</p>
                 </div>
 
-                <Card className="glass-modern overflow-hidden border-white/10 shadow-2xl">
+                <Card className="glass-modern overflow-hidden border-foreground/10 shadow-2xl">
                     <CardHeader className="pt-8 pb-4">
                         <AnimatePresence mode="wait">
                             <motion.div
@@ -104,11 +104,11 @@ const AuthPage = () => {
                                 exit={{ opacity: 0, x: -20 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <CardTitle className="text-3xl font-bold text-center tracking-tight">
-                                    {isRegister ? 'Join the Future' : 'Welcome Back'}
+                                <CardTitle className="text-4xl font-black text-center tracking-tight mb-2">
+                                    {isRegister ? 'Get Started' : 'Welcome Back'}
                                 </CardTitle>
-                                <CardDescription className="text-center text-base mt-2">
-                                    {isRegister ? 'Create your professional account' : 'Access your dashboard and API tools'}
+                                <CardDescription className="text-center text-sm font-medium">
+                                    {isRegister ? 'Join the exclusive data validation platform' : 'Access your dashboard and API tools'}
                                 </CardDescription>
                             </motion.div>
                         </AnimatePresence>
@@ -124,7 +124,7 @@ const AuthPage = () => {
                                     >
                                         <div className="relative group">
                                             <Input
-                                                className="bg-white/5 border-white/10 focus:border-primary/50 h-12 transition-all"
+                                                className="bg-foreground/5 border-foreground/10 focus:border-primary/50 h-12 transition-all"
                                                 placeholder="Full Name (min. 4 chars)"
                                                 {...register('name', { required: isRegister, minLength: 4 })}
                                             />
@@ -135,7 +135,7 @@ const AuthPage = () => {
                             </AnimatePresence>
 
                             <Input
-                                className="bg-white/5 border-white/10 focus:border-primary/50 h-12 transition-all"
+                                className="bg-foreground/5 border-foreground/10 focus:border-primary/50 h-12 transition-all"
                                 placeholder="Email address"
                                 type="email"
                                 {...register('email', { required: true })}
@@ -143,7 +143,7 @@ const AuthPage = () => {
                             {errors.email && <span className="text-destructive text-xs mt-1 block">Valid email is required</span>}
 
                             <Input
-                                className="bg-white/5 border-white/10 focus:border-primary/50 h-12 transition-all"
+                                className="bg-foreground/5 border-foreground/10 focus:border-primary/50 h-12 transition-all"
                                 placeholder="Password (min. 8 chars)"
                                 type="password"
                                 {...register('password', { required: true, minLength: 8 })}
@@ -170,23 +170,43 @@ const AuthPage = () => {
                                 </motion.div>
                             )}
 
-                            <Button className="w-full h-12 text-base font-bold rounded-xl glow-primary mt-4 transition-all active:scale-[0.98]" type="submit" disabled={loading}>
-                                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (isRegister ? 'Create Account' : 'Sign In Now')}
+                            <Button className="w-full h-14 text-lg font-black tracking-wide rounded-2xl glow-primary mt-6 transition-all active:scale-[0.98] shadow-[0_0_30px_rgba(var(--primary),0.2)]" type="submit" disabled={loading}>
+                                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : (isRegister ? 'Get Started Now' : 'Sign In Securely')}
                             </Button>
                         </form>
                     </CardContent>
-                    <CardFooter className="flex flex-col items-center gap-4 pt-0 pb-8">
-                        <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                    <CardFooter className="flex flex-col items-center gap-5 pt-2 pb-10 px-8">
+                        <div className="w-full h-px bg-gradient-to-r from-transparent via-foreground/10 to-transparent mb-2" />
 
-                        <Button variant="link" onClick={() => { setIsRegister(!isRegister); setError(''); setSuccessMsg('') }}
-                            className="text-muted-foreground hover:text-primary transition-all duration-300 font-medium">
-                            {isRegister ? 'Already verified? Sign in instead' : "New to Go-Biz? Join the waitlist"}
-                        </Button>
-                        {!isRegister && (
-                            <button onClick={() => navigate('forgot-password')}
-                                className="text-xs text-muted-foreground/60 hover:text-primary transition-all underline underline-offset-4">
-                                Securely reset password
+                        {isRegister ? (
+                            <button
+                                onClick={() => { setIsRegister(false); setError(''); setSuccessMsg('') }}
+                                className="group w-full p-4 rounded-2xl bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 transition-all flex items-center justify-between"
+                            >
+                                <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Already verified?</span>
+                                <span className="text-sm font-bold text-primary group-hover:text-primary/80 transition-colors flex items-center gap-1">
+                                    Sign In Instead <span className="text-lg leading-none">→</span>
+                                </span>
                             </button>
+                        ) : (
+                            <div className="w-full space-y-3">
+                                <button
+                                    onClick={() => { setIsRegister(true); setError(''); setSuccessMsg('') }}
+                                    className="group w-full p-4 rounded-2xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-between"
+                                >
+                                    <span className="text-sm font-medium text-foreground">New to Go-Biz?</span>
+                                    <span className="text-sm font-bold text-primary flex items-center gap-1 shadow-sm">
+                                        Join the waitlist <span className="text-lg leading-none">→</span>
+                                    </span>
+                                </button>
+
+                                <button
+                                    onClick={() => navigate('forgot-password')}
+                                    className="w-full p-3 rounded-xl hover:bg-foreground/5 transition-all text-sm font-medium text-muted-foreground/80 hover:text-foreground flex items-center justify-center gap-2"
+                                >
+                                    <ShieldAlert className="w-4 h-4 opacity-50" /> Securely reset password
+                                </button>
+                            </div>
                         )}
                     </CardFooter>
                 </Card>
